@@ -261,9 +261,9 @@ Your working directory stays clean between runs — just keep the essential `boo
 
 ## 🤝 Credits
 
-**Origin:** Cojan’s Terraform prototype for user/team creation<br>
-**Expanded by:** Raymon Epping<br>
-**Goal:** Build a reusable, workshop-friendly pipeline for managing Terraform Cloud users safely and at scale.<br>
+**Origin:** Cojan’s Terraform prototype for user/team creation  
+**Expanded by:** Raymon Epping  
+**Goal:** Build a reusable, workshop-friendly pipeline for managing Terraform Cloud users safely and at scale.  
 
 ---
 
