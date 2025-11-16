@@ -271,3 +271,7 @@ Your working directory stays clean between runs — just keep the essential `boo
 
 🤖 Powered by Sally — my AI DevOps copilot
 🚀 Because automation should automate itself.
+
+## 🧾 License
+
+[GPLv3](LICENSE) © Raymon Epping
