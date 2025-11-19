@@ -27,7 +27,7 @@ variable "shared_team_name" {
 
 variable "common_team_name" {
   type    = string
-  default = "Contributors"
+  default = "owners"
 }
 
 variable "existing_team_id" {
