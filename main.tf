@@ -64,7 +64,7 @@ resource "tfe_organization_membership" "org_membership" {
 
   lifecycle {
     ignore_changes  = [email]
-    prevent_destroy = true
+    prevent_destroy = false
   }
 }
 
@@ -95,7 +95,26 @@ resource "tfe_team" "personal" {
   for_each     = local.assignment_per_user ? local.usernames : {}
   organization = var.tfe_organization
   name         = "${var.personal_team_prefix}_${each.value}"
+
+  organization_access {
+    read_workspaces            = var.organization_access.read_workspaces
+    read_projects              = var.organization_access.read_projects
+    manage_workspaces          = var.organization_access.manage_workspaces
+    manage_projects            = var.organization_access.manage_projects
+    manage_agent_pools         = var.organization_access.manage_agent_pools
+    manage_run_tasks           = var.organization_access.manage_run_tasks
+    manage_policies            = var.organization_access.manage_policies
+    manage_policy_overrides    = var.organization_access.manage_policy_overrides
+    manage_vcs_settings        = var.organization_access.manage_vcs_settings
+    manage_providers           = var.organization_access.manage_providers
+    manage_modules             = var.organization_access.manage_modules
+    manage_membership          = var.organization_access.manage_membership
+    manage_teams               = var.organization_access.manage_teams
+    manage_organization_access = var.organization_access.manage_organization_access
+    access_secret_teams        = var.organization_access.access_secret_teams
+  }
 }
+
 
 resource "tfe_team_organization_members" "personal_team_members" {
   for_each                    = local.assignment_per_user ? local.usernames : {}
@@ -126,6 +145,24 @@ resource "tfe_team" "shared" {
   count        = local.assignment_per_user ? 0 : 1
   organization = var.tfe_organization
   name         = var.shared_team_name
+
+  organization_access {
+    read_workspaces            = var.organization_access.read_workspaces
+    read_projects              = var.organization_access.read_projects
+    manage_workspaces          = var.organization_access.manage_workspaces
+    manage_projects            = var.organization_access.manage_projects
+    manage_agent_pools         = var.organization_access.manage_agent_pools
+    manage_run_tasks           = var.organization_access.manage_run_tasks
+    manage_policies            = var.organization_access.manage_policies
+    manage_policy_overrides    = var.organization_access.manage_policy_overrides
+    manage_vcs_settings        = var.organization_access.manage_vcs_settings
+    manage_providers           = var.organization_access.manage_providers
+    manage_modules             = var.organization_access.manage_modules
+    manage_membership          = var.organization_access.manage_membership
+    manage_teams               = var.organization_access.manage_teams
+    manage_organization_access = var.organization_access.manage_organization_access
+    access_secret_teams        = var.organization_access.access_secret_teams
+  }
 }
 
 # One shared project for everyone

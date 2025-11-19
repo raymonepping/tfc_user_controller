@@ -1,6 +1,6 @@
 variable "tfe_organization" {
   type    = string
-  default = "HUGS_NL"
+  default = "HUGGING_NL"
 }
 
 variable "assignment_mode" {
@@ -81,3 +81,23 @@ variable "using_locked" {
   default     = false
 }
 
+variable "organization_access" {
+  description = "Global organization-wide access settings applied to all workshop teams"
+  type = object({
+    read_workspaces            = bool
+    read_projects              = bool
+    manage_workspaces          = bool
+    manage_projects            = bool
+    manage_agent_pools         = bool
+    manage_run_tasks           = bool
+    manage_policies            = bool
+    manage_policy_overrides    = bool
+    manage_vcs_settings        = bool
+    manage_providers           = bool
+    manage_modules             = bool
+    manage_membership          = bool
+    manage_teams               = bool
+    manage_organization_access = bool
+    access_secret_teams        = bool
+  })
+}
