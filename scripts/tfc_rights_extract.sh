@@ -7,9 +7,9 @@ set -euo pipefail
 # for a TFC team from Terraform state as JSON.
 #
 # Usage:
-#   ./scripts/tfc_rights_extract.sh --email raymon.epping@ibm.com
-#   ./scripts/tfc_rights_extract.sh --address 'tfe_team.personal["raymon.epping@ibm.com"]'
-#   ./scripts/tfc_rights_extract.sh --email raymon.epping@ibm.com --output rights_raymon.json
+#   ./tfc_rights_extract.sh --email raymon.epping@ibm.com
+#   ./tfc_rights_extract.sh --address 'tfe_team.shared[0]'
+#   ./tfc_rights_extract.sh --email raymon.epping@ibm.com --output rights_raymon.json
 #
 # Output JSON example:
 # {
@@ -17,25 +17,26 @@ set -euo pipefail
 #   "team_email": "raymon.epping@ibm.com",
 #   "in_state": true,
 #   "name": "team_raymon_epping",
-#   "organization": "HUGS_NL",
+#   "organization": "HUGGING_NL",
 #   "visibility": "secret",
 #   "allow_member_token_management": true,
-#   "organization_access": [
-#     {
-#       "read_workspaces": false,
-#       ...
-#     }
-#   ]
+#   "organization_access": {
+#     "read_workspaces": false,
+#     ...
+#   }
 # }
 
-VERSION="1.2.0"
+VERSION="1.1.0"
 
 JT_MODE=false
 TEAM_EMAIL=""
 RESOURCE_ADDRESS=""
-OUTPUT_FILE=""
+OUTPUT_BASENAME=""
 OUTPUT_DIR="."
 WORKDIR=""
+QUIET_HEADERS=false
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
   cat <<EOF
@@ -48,34 +49,30 @@ Usage:
 Options:
   --email, -e        User email. Maps to tfe_team.personal["<email>"].
   --address, -a      Full Terraform resource address, for example:
-                     'tfe_team.personal["raymon.epping@ibm.com"]'
-  --output, -o       Output JSON file. Default:
+                     'tfe_team.shared[0]' or 'tfe_team.personal["user@example.com"]'
+  --output, -o       Output JSON filename. Default:
                        rights_<email>.json or rights_<safe_address>.json
-  --output-dir, -d   Directory where the JSON will be written.
-                     Default: current directory.
+  --output-dir, -d   Directory where JSON will be written. Default: current directory.
   --workdir, -w      Terraform working directory.
-                     Default: auto-detected from script location.
+                     Default: auto detected from script location.
   --jt, --bring-sexy-back
-                     Enable Justin Timberlake mode for root detection logs.
+                     Enable JT mode for root detection logs.
   --help, -h         Show this help and exit.
 EOF
 }
 
 log() {
-  if [[ "${JT_MODE}" == true ]]; then
+  if [[ "${JT_MODE}" == true && "${QUIET_HEADERS}" != true ]]; then
     printf '%s\n' "$@" >&2
   fi
 }
 
-# --- Terraform Root Auto-Detection (JT Edition) ------------------------------
-# "I am bringin' Terraform back"
-
+# Terraform root auto detection (same pattern as the other scripts)
 auto_detect_workdir() {
 
   local start="$1"
   local dir="$start"
 
-  # Nice newline before the first JT log, stderr only
   [[ "$JT_MODE" == true ]] && log ""
 
   while [[ "$dir" != "/" ]]; do
@@ -118,7 +115,7 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --output|-o)
-      OUTPUT_FILE="${2:-}"
+      OUTPUT_BASENAME="${2:-}"
       shift 2
       ;;
     --output-dir|-d)
@@ -133,6 +130,10 @@ while [[ $# -gt 0 ]]; do
       JT_MODE=true
       shift
       ;;
+    --quiet-headers)
+      QUIET_HEADERS=true
+      shift
+      ;;      
     --help|-h)
       usage
       exit 0
@@ -155,16 +156,30 @@ if [[ -z "${RESOURCE_ADDRESS}" && -n "${TEAM_EMAIL}" ]]; then
   RESOURCE_ADDRESS="tfe_team.personal[\"${TEAM_EMAIL}\"]"
 fi
 
-# Prepare output name if not overridden
-if [[ -z "${OUTPUT_FILE}" ]]; then
+# Normalise dirs
+mkdir -p "${OUTPUT_DIR}"
+OUTPUT_DIR="$(cd "${OUTPUT_DIR}" && pwd)"
+
+if [[ -z "${WORKDIR}" ]]; then
+  # Start one level above scripts, where your main .tf and state live
+  DEFAULT_WORKDIR="$(auto_detect_workdir "$(cd "$SCRIPT_DIR/.." && pwd)")"
+  WORKDIR="${DEFAULT_WORKDIR}"
+fi
+
+WORKDIR="$(cd "${WORKDIR}" && pwd)"
+
+# Derive output filename
+if [[ -z "${OUTPUT_BASENAME}" ]]; then
   if [[ -n "${TEAM_EMAIL}" ]]; then
     SAFE_EMAIL="${TEAM_EMAIL//[^a-zA-Z0-9_]/_}"
-    OUTPUT_FILE="rights_${SAFE_EMAIL}.json"
+    OUTPUT_BASENAME="rights_${SAFE_EMAIL}.json"
   else
     SAFE_ADDR="${RESOURCE_ADDRESS//[^a-zA-Z0-9_]/_}"
-    OUTPUT_FILE="rights_${SAFE_ADDR}.json"
+    OUTPUT_BASENAME="rights_${SAFE_ADDR}.json"
   fi
 fi
+
+OUTPUT_FILE="${OUTPUT_DIR}/${OUTPUT_BASENAME}"
 
 # Dependencies
 if ! command -v terraform >/dev/null 2>&1; then
@@ -177,35 +192,21 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 1
 fi
 
-# Normalise dirs
-mkdir -p "${OUTPUT_DIR}"
-OUTPUT_DIR="$(cd "${OUTPUT_DIR}" && pwd)"
-OUTPUT_FILE="${OUTPUT_DIR}/${OUTPUT_FILE}"
+if [[ "${QUIET_HEADERS}" != true ]]; then
+  if [[ "${JT_MODE}" == true ]]; then
+    echo "🎧 Terraform workdir detected: ${WORKDIR}"
+    echo ""
+  else
+    echo "📁 Terraform dir:    ${WORKDIR}"
+  fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-if [[ -z "${WORKDIR}" ]]; then
-  # Start one level above scripts, where your main .tf and state live
-  DEFAULT_WORKDIR="$(auto_detect_workdir "$(cd "$SCRIPT_DIR/.." && pwd)")"
-  WORKDIR="${DEFAULT_WORKDIR}"
-fi
-
-WORKDIR="$(cd "$WORKDIR" && pwd)"
-
-if [[ "${JT_MODE}" == true ]]; then
-  echo "🎵 JT mode: \"I am bringin' Terraform back\""
-  echo "🎧 Terraform workdir detected: ${WORKDIR}"
+  echo "📁 Output dir:       ${OUTPUT_DIR}"
+  echo "🔍 Resource address: ${RESOURCE_ADDRESS}"
+  echo "📝 Output file:      ${OUTPUT_FILE}"
   echo ""
-else
-  echo "📁 Terraform dir:    ${WORKDIR}"
 fi
 
-echo "📁 Output dir:       ${OUTPUT_DIR}"
-echo "🔍 Resource address: ${RESOURCE_ADDRESS}"
-echo "📝 Output file:      ${OUTPUT_FILE}"
-echo ""
 echo "🔎 Checking if resource is in Terraform state..."
-
 if ! terraform -chdir="${WORKDIR}" state show "${RESOURCE_ADDRESS}" >/dev/null 2>&1; then
   jq -n \
     --arg addr "${RESOURCE_ADDRESS}" \
@@ -216,55 +217,52 @@ if ! terraform -chdir="${WORKDIR}" state show "${RESOURCE_ADDRESS}" >/dev/null 2
       in_state: false,
       organization_access: null
     }' > "${OUTPUT_FILE}"
+
   echo "❌ Resource not in state. Wrote ${OUTPUT_FILE}"
   exit 0
 fi
 
 echo "✅ Resource is in state. Reading full state as JSON..."
 
-# Search the full module tree, not just root_module
-terraform -chdir="${WORKDIR}" show -json \
-  | jq --arg addr "${RESOURCE_ADDRESS}" --arg email "${TEAM_EMAIL}" '
-    def all_resources(m):
-      [
-        ((m.resources // [])[]),
-        ((m.child_modules // [])[] | all_resources(.))
-      ]
-      | flatten;
+STATE_JSON="$(terraform -chdir="${WORKDIR}" show -json)"
 
-    .values.root_module as $root
-    | (all_resources($root)
-       | map(select(.address == $addr))
-       | .[0]?
-      ) as $res
-    | if $res == null then
-        empty
-      else
-        {
-          resource: $res.address,
-          team_email: ($email | select(. != "")),
-          in_state: true,
-          name: $res.values.name,
-          organization: $res.values.organization,
-          visibility: $res.values.visibility,
-          allow_member_token_management: $res.values.allow_member_token_management,
-          organization_access: $res.values.organization_access
-        }
-      end
-  ' > "${OUTPUT_FILE}"
+# Walk all modules, just like the live drift script
+jq --arg addr "${RESOURCE_ADDRESS}" --arg email "${TEAM_EMAIL}" '
+  def all_resources(m):
+    [
+      ((m.resources // [])[]),
+      ((m.child_modules // [])[] | all_resources(.))
+    ]
+    | flatten;
 
-if [[ ! -s "${OUTPUT_FILE}" ]]; then
-  # Fallback if not found in the JSON tree for some reason
-  jq -n \
-    --arg addr "${RESOURCE_ADDRESS}" \
-    --arg email "${TEAM_EMAIL}" \
-    '{
-      resource: $addr,
-      team_email: ($email | select(. != "")),
-      in_state: true,
-      organization_access: null
-    }' > "${OUTPUT_FILE}"
-  echo "⚠️ Resource is in state but not found in JSON tree. Wrote minimal info to ${OUTPUT_FILE}"
-else
+  .values as $v
+  | ($v.root_module | all_resources(.))
+  | map(select(.address == $addr))
+  | .[0]? as $res
+  | if $res == null then
+      {
+        resource: $addr,
+        team_email: ($email | select(. != "")),
+        in_state: true,
+        organization_access: null,
+        note: "resource not found in JSON tree for this address; check state layout or modules"
+      }
+    else
+      {
+        resource: $res.address,
+        team_email: ($email | select(. != "")),
+        in_state: true,
+        name: ($res.values.name // null),
+        organization: ($res.values.organization // null),
+        visibility: ($res.values.visibility // null),
+        allow_member_token_management: ($res.values.allow_member_token_management // null),
+        organization_access: ($res.values.organization_access // null)
+      }
+    end
+' <<< "${STATE_JSON}" > "${OUTPUT_FILE}"
+
+if jq -e '.organization_access != null' "${OUTPUT_FILE}" >/dev/null 2>&1; then
   echo "✅ Rights extracted to: ${OUTPUT_FILE}"
+else
+  echo "⚠️ Resource is in state but organization_access was not found. Wrote minimal info to ${OUTPUT_FILE}"
 fi

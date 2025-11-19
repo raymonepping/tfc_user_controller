@@ -1,0 +1,6 @@
+{
+  "resource": "tfe_team.shared[0]",
+  "in_state": true,
+  "drift": false,
+  "change": null
+}

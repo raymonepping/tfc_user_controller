@@ -333,6 +333,7 @@ case "${COMMAND}" in
     "${SCRIPT_DIR}/tfc_diff_object.sh" \
       --address "${RESOURCE_ADDRESS}" \
       --output-dir "${GLOBAL_OUTPUT_DIR}" \
+      --quiet-headers \
       "${jt_args[@]}"
 
     echo
@@ -340,6 +341,7 @@ case "${COMMAND}" in
     "${SCRIPT_DIR}/tfc_diff_live_object.sh" \
       --address "${RESOURCE_ADDRESS}" \
       --output-dir "${GLOBAL_OUTPUT_DIR}" \
+      --quiet-headers \
       "${jt_args[@]}"
 
     echo

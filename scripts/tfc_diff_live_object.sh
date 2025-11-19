@@ -25,7 +25,7 @@ set -euo pipefail
 #   }
 # }
 
-VERSION="1.2.0"
+VERSION="1.3.0"
 
 JT_MODE=false
 RESOURCE_ADDRESS=""
@@ -34,6 +34,7 @@ OUTPUT_DIR="."
 WORKDIR=""
 PLAN_FILES=()
 KEEP_PLAN=false
+QUIET_HEADERS=false
 
 usage() {
   cat <<EOF
@@ -47,18 +48,18 @@ Options:
                         'tfe_team.personal["raymon.epping@ibm.com"]'
   --output, -o        Output basename (without extension).
                       Default: derived from address (safe characters only).
-  --output-dir, -d    Directory where the JSON and plan files will be written.
+  --output-dir, -d    Directory where the JSON artifacts will be written.
                       Default: current directory.
   --workdir, -w       Terraform working directory.
                       Default: auto-detected from script location.
-  --keep-plan         Do not delete generated .tfplan/.json plan files on exit.
+  --keep-plan         Do not delete generated JSON plan file on exit.
   --jt, --bring-sexy-back
                       Enable Justin Timberlake mode for root detection logs.
   --help, -h          Show this help and exit.
 
 Behavior:
   - Verifies the resource exists in terraform state.
-  - Runs: terraform plan -refresh-only -target=<resource_address>
+  - Runs: terraform plan -refresh-only -target=<resource_address> -json
   - If no drift:
       {
         "resource": "...",
@@ -92,20 +93,18 @@ cleanup_plans() {
 trap cleanup_plans EXIT
 
 log() {
-  if [[ "${JT_MODE}" == true ]]; then
+  if [[ "${JT_MODE}" == true && "${QUIET_HEADERS}" != true ]]; then
     printf '%s\n' "$@" >&2
   fi
 }
 
 # --- Terraform Root Auto-Detection (JT Edition) ------------------------------
-# 🎵 "I'm bringin' sexy back..." 🎵
+# "I'm bringin' sexy back"
 
 auto_detect_workdir() {
-
   local start="$1"
   local dir="$start"
 
-  # Optional: pretty newline before the first JT log, on stderr only
   [[ "$JT_MODE" == true ]] && log ""
 
   while [[ "$dir" != "/" ]]; do
@@ -159,6 +158,10 @@ while [[ $# -gt 0 ]]; do
       KEEP_PLAN=true
       shift
       ;;
+    --quiet-headers)
+      QUIET_HEADERS=true
+      shift
+      ;;
     --jt|--bring-sexy-back)
       JT_MODE=true
       shift
@@ -198,7 +201,7 @@ OUTPUT_DIR="$(cd "${OUTPUT_DIR}" && pwd)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [[ -z "${WORKDIR}" ]]; then
-  # Start one level above scripts/, where your main .tf and state live
+  # Start one level above scripts/, where main .tf and state live
   DEFAULT_WORKDIR="$(auto_detect_workdir "$(cd "$SCRIPT_DIR/.." && pwd)")"
   WORKDIR="${DEFAULT_WORKDIR}"
 fi
@@ -213,24 +216,26 @@ fi
 OUTPUT_FILE="${OUTPUT_DIR}/live_diff_${OUTPUT_BASENAME}.json"
 SAFE_PLAN_NAME="${RESOURCE_ADDRESS//[^a-zA-Z0-9_]/_}"
 
-PLAN_FILE="${OUTPUT_DIR}/.plan_refresh_${SAFE_PLAN_NAME}.tfplan"
 PLAN_JSON="${OUTPUT_DIR}/.plan_refresh_${SAFE_PLAN_NAME}.json"
-PLAN_FILES+=("${PLAN_FILE}" "${PLAN_JSON}")
+PLAN_FILES=("${PLAN_JSON}")
 
-if [[ "${JT_MODE}" == true ]]; then
-  echo "🎵 JT mode: \"I'm bringin' Terraform back\""
-  echo "🎧 Terraform workdir detected: ${WORKDIR}"
+if [[ "${QUIET_HEADERS}" != true ]]; then
+  if [[ "${JT_MODE}" == true ]]; then
+    echo "🎵 JT mode: \"I'm bringin' Terraform back\""
+    echo "🎧 Terraform workdir detected: ${WORKDIR}"
+    echo ""
+  else
+    echo "📁 Terraform dir:    ${WORKDIR}"
+  fi
+
+  echo "📁 Output dir:       ${OUTPUT_DIR}"
+  echo "🔍 Resource address: ${RESOURCE_ADDRESS}"
+  echo "📝 Output file:      ${OUTPUT_FILE}"
   echo ""
-else
-  echo "📁 Terraform dir:    ${WORKDIR}"
 fi
 
-echo "📁 Output dir:       ${OUTPUT_DIR}"
-echo "🔍 Resource address: ${RESOURCE_ADDRESS}"
-echo "📝 Output file:      ${OUTPUT_FILE}"
-
-echo ""
 echo "🔎 Checking if resource exists in Terraform state..."
+
 if ! terraform -chdir="${WORKDIR}" state show "${RESOURCE_ADDRESS}" >/dev/null 2>&1; then
   jq -n \
     --arg resource "${RESOURCE_ADDRESS}" \
@@ -254,11 +259,13 @@ status=0
 terraform -chdir="${WORKDIR}" plan \
   -refresh-only \
   -target="${RESOURCE_ADDRESS}" \
-  -out="${PLAN_FILE}" \
   -detailed-exitcode \
-  >/tmp/tfc_diff_live_object_plan.log 2>&1 || status=$?
+  -json \
+  > "${PLAN_JSON}" \
+  2> /tmp/tfc_diff_live_object_plan.log || status=$?
 
 if [[ "${status}" -eq 0 ]]; then
+  # No drift between state and live
   jq -n \
     --arg resource "${RESOURCE_ADDRESS}" \
     '{
@@ -278,10 +285,9 @@ if [[ "${status}" -ne 2 ]]; then
   exit "${status}"
 fi
 
-echo "⚠️  Live drift detected. Converting plan to JSON..."
-terraform -chdir="${WORKDIR}" show -json "${PLAN_FILE}" > "${PLAN_JSON}"
+echo "⚠️  Live drift detected. Converting plan JSON..."
 
-# We walk all modules recursively so we do not care if the resource
+# Walk all modules recursively so we do not care if the resource
 # lives directly in root_module or in child modules.
 jq --arg addr "${RESOURCE_ADDRESS}" '
   def all_resources(m):
