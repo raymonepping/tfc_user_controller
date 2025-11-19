@@ -41,13 +41,15 @@ locals {
 # Common team (by name or ID override)
 ########################################
 data "tfe_team" "common" {
-  count        = var.existing_team_id == "" ? 1 : 0
+  count        = var.enable_common_access && var.existing_team_id == "" ? 1 : 0
   name         = var.common_team_name
   organization = var.tfe_organization
 }
 
 locals {
-  common_team_id = var.existing_team_id != "" ? var.existing_team_id : data.tfe_team.common[0].id
+  common_team_id = var.enable_common_access ? (
+    var.existing_team_id != "" ? var.existing_team_id : data.tfe_team.common[0].id
+  ) : null
 }
 
 ########################################
