@@ -1,4 +1,4 @@
-assignment_mode     = "per_user"            # per_user | shared
+assignment_mode     = "shared"              # per_user | shared
 
 shared_project_name = "project_chicago"
 shared_team_name    = "team_bulls"
