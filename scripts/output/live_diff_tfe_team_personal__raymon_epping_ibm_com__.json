@@ -1,0 +1,6 @@
+{
+  "resource": "tfe_team.personal[\"raymon.epping@ibm.com\"]",
+  "in_state": true,
+  "drift": false,
+  "change": null
+}

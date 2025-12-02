@@ -24,7 +24,7 @@ set -euo pipefail
 #   --output-dir ./scripts/output
 #   --jt / --bring-sexy-back
 
-VERSION="1.0.1"
+VERSION="1.0.2"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_OUTPUT_DIR="${SCRIPT_DIR}/output"
@@ -298,21 +298,27 @@ case "${COMMAND}" in
     fi
 
     # Derive filenames for summary
+    SAFE_ADDR="${RESOURCE_ADDRESS//[^a-zA-Z0-9_]/_}"
+
     if [[ -n "${TEAM_EMAIL}" ]]; then
       SAFE_EMAIL="${TEAM_EMAIL//[^a-zA-Z0-9_]/_}"
       RIGHTS_FILE="${GLOBAL_OUTPUT_DIR}/rights_${SAFE_EMAIL}.json"
     else
       SAFE_EMAIL=""
-      RIGHTS_FILE=""
+      RIGHTS_FILE="${GLOBAL_OUTPUT_DIR}/rights_${SAFE_ADDR}.json"
     fi
 
-    SAFE_ADDR="${RESOURCE_ADDRESS//[^a-zA-Z0-9_]/_}"
     CONFIG_FILE="${GLOBAL_OUTPUT_DIR}/drift_${SAFE_ADDR}.json"
     LIVE_FILE="${GLOBAL_OUTPUT_DIR}/live_diff_${SAFE_ADDR}.json"
 
     echo
     echo "${BOLD}🧪 Triage for${RESET} ${BLUE}${RESOURCE_ADDRESS}${RESET}"
     [[ -n "${TEAM_EMAIL}" ]] && echo "   Team email: ${TEAM_EMAIL}"
+
+    if [[ "${JT_MODE}" == true ]]; then
+      echo ""
+      echo '🎵 JT mode: "I'\''m bringin'\'' Terraform back"'
+    fi    
 
     echo
     echo "${YELLOW}▶ [1/3] Rights from Terraform state${RESET}"
@@ -326,6 +332,20 @@ case "${COMMAND}" in
         --address "${RESOURCE_ADDRESS}" \
         --output-dir "${GLOBAL_OUTPUT_DIR}" \
         "${jt_args[@]}"
+    fi
+
+    # Short-circuit if the resource is not in state
+    if command -v jq >/dev/null 2>&1 && [[ -f "${RIGHTS_FILE}" ]]; then
+      if jq -e '.in_state == false' "${RIGHTS_FILE}" >/dev/null 2>&1; then
+        echo
+        warn "Resource not in state. Skipping config and live drift checks."
+        echo
+        ok "Triage complete (resource missing from state)."
+        echo
+        echo "${BOLD}📁 Artifacts${RESET}"
+        echo "  • Rights:        ${RIGHTS_FILE}"
+        exit 0
+      fi
     fi
 
     echo
