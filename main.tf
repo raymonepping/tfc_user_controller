@@ -195,19 +195,17 @@ data "tfe_project" "shared" {
 
 # Unified IDs for shared team and project
 locals {
-  shared_team_id = local.assignment_per_user ? null :
-    (
-      local.shared_using_existing
-      ? data.tfe_team.shared[0].id
-      : tfe_team.shared[0].id
-    )
+  shared_team_id = local.assignment_per_user ? null : (
+    local.shared_using_existing
+    ? data.tfe_team.shared[0].id
+    : tfe_team.shared[0].id
+  )
 
-  shared_project_id = local.assignment_per_user ? null :
-    (
-      local.shared_using_existing
-      ? data.tfe_project.shared[0].id
-      : tfe_project.shared[0].id
-    )
+  shared_project_id = local.assignment_per_user ? null : (
+    local.shared_using_existing
+    ? data.tfe_project.shared[0].id
+    : tfe_project.shared[0].id
+  )
 }
 
 # Add all org memberships to the shared team
