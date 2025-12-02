@@ -148,8 +148,13 @@ resource "tfe_team_project_access" "contributors_access" {
 ########################################
 
 # Shared team for everyone (create mode)
+########################################
+# Shared project + shared team (assignment_mode = "shared" or "existing")
+########################################
+
+# Always create one shared team for everyone (in shared/existing modes)
 resource "tfe_team" "shared" {
-  count        = local.assignment_per_user || local.shared_using_existing ? 0 : 1
+  count        = local.assignment_per_user ? 0 : 1
   organization = var.tfe_organization
   name         = var.shared_team_name
 
@@ -172,21 +177,14 @@ resource "tfe_team" "shared" {
   }
 }
 
-# Lookup existing shared team (existing mode)
-data "tfe_team" "shared" {
-  count        = local.assignment_per_user || !local.shared_using_existing ? 0 : 1
-  name         = var.shared_team_name
-  organization = var.tfe_organization
-}
-
-# Shared project for everyone (create mode)
+# Shared project (create mode)
 resource "tfe_project" "shared" {
   count        = local.assignment_per_user || local.shared_using_existing ? 0 : 1
   organization = var.tfe_organization
   name         = var.shared_project_name
 }
 
-# Lookup existing shared project (existing mode)
+# Shared project (existing mode)
 data "tfe_project" "shared" {
   count        = local.assignment_per_user || !local.shared_using_existing ? 0 : 1
   name         = var.shared_project_name
@@ -195,12 +193,10 @@ data "tfe_project" "shared" {
 
 # Unified IDs for shared team and project
 locals {
-  shared_team_id = local.assignment_per_user ? null : (
-    local.shared_using_existing
-    ? data.tfe_team.shared[0].id
-    : tfe_team.shared[0].id
-  )
+  # team is always created in shared/existing modes
+  shared_team_id = local.assignment_per_user ? null : tfe_team.shared[0].id
 
+  # project may be created or looked up
   shared_project_id = local.assignment_per_user ? null : (
     local.shared_using_existing
     ? data.tfe_project.shared[0].id
@@ -234,6 +230,7 @@ resource "tfe_team_project_access" "shared_contributors" {
   project_id = local.shared_project_id
   access     = "maintain"
 }
+
 
 ########################################
 # Persist credentials for steady-state
