@@ -101,3 +101,14 @@ variable "organization_access" {
     access_secret_teams        = bool
   })
 }
+
+variable "shared_mode" {
+  type        = string
+  description = "How to handle the shared team/project: create or existing"
+  default     = "create"
+
+  validation {
+    condition     = contains(["create", "existing"], var.shared_mode)
+    error_message = "shared_mode must be either \"create\" or \"existing\"."
+  }
+}

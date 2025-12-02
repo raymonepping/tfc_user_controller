@@ -12,6 +12,10 @@ locals {
 # Mode selection & username derivation
 ########################################
 locals {
+  shared_using_existing = var.shared_mode == "existing"
+}
+
+locals {
   # true  -> create per-user projects/teams
   # false -> create a single shared project/team
   assignment_per_user = var.assignment_mode == "per_user"
@@ -56,7 +60,9 @@ locals {
 # Bootstrap memberships (now always declared)
 ########################################
 locals {
-  org_membership_map = local.using_locked ? { for email in local.effective_emails : email => email } : { for email in local.effective_emails : email => email }
+  org_membership_map = local.using_locked
+    ? { for email in local.effective_emails : email => email }
+    : { for email in local.effective_emails : email => email }
 }
 
 resource "tfe_organization_membership" "org_membership" {
@@ -117,7 +123,6 @@ resource "tfe_team" "personal" {
   }
 }
 
-
 resource "tfe_team_organization_members" "personal_team_members" {
   for_each                    = local.assignment_per_user ? local.usernames : {}
   team_id                     = tfe_team.personal[each.key].id
@@ -142,9 +147,9 @@ resource "tfe_team_project_access" "contributors_access" {
 # Shared project + shared team (assignment_mode = "shared")
 ########################################
 
-# One shared team for everyone
+# Shared team for everyone (create mode)
 resource "tfe_team" "shared" {
-  count        = local.assignment_per_user ? 0 : 1
+  count        = local.assignment_per_user || local.shared_using_existing ? 0 : 1
   organization = var.tfe_organization
   name         = var.shared_team_name
 
@@ -167,19 +172,50 @@ resource "tfe_team" "shared" {
   }
 }
 
-# One shared project for everyone
+# Lookup existing shared team (existing mode)
+data "tfe_team" "shared" {
+  count        = local.assignment_per_user || !local.shared_using_existing ? 0 : 1
+  name         = var.shared_team_name
+  organization = var.tfe_organization
+}
+
+# Shared project for everyone (create mode)
 resource "tfe_project" "shared" {
-  count        = local.assignment_per_user ? 0 : 1
+  count        = local.assignment_per_user || local.shared_using_existing ? 0 : 1
   organization = var.tfe_organization
   name         = var.shared_project_name
+}
+
+# Lookup existing shared project (existing mode)
+data "tfe_project" "shared" {
+  count        = local.assignment_per_user || !local.shared_using_existing ? 0 : 1
+  name         = var.shared_project_name
+  organization = var.tfe_organization
+}
+
+# Unified IDs for shared team and project
+locals {
+  shared_team_id = local.assignment_per_user ? null :
+    (
+      local.shared_using_existing
+      ? data.tfe_team.shared[0].id
+      : tfe_team.shared[0].id
+    )
+
+  shared_project_id = local.assignment_per_user ? null :
+    (
+      local.shared_using_existing
+      ? data.tfe_project.shared[0].id
+      : tfe_project.shared[0].id
+    )
 }
 
 # Add all org memberships to the shared team
 resource "tfe_team_organization_members" "shared_members" {
   count   = local.assignment_per_user ? 0 : 1
-  team_id = tfe_team.shared[0].id
+  team_id = local.shared_team_id
 
-  # everyone who’s in effective_emails joins the shared team
+  # everyone who is in effective_emails joins the shared team
   organization_membership_ids = [
     for e in local.effective_emails : local.membership_ids[e]
   ]
@@ -188,8 +224,8 @@ resource "tfe_team_organization_members" "shared_members" {
 # Give the shared team access to the shared project
 resource "tfe_team_project_access" "shared_access" {
   count      = local.assignment_per_user ? 0 : 1
-  team_id    = tfe_team.shared[0].id
-  project_id = tfe_project.shared[0].id
+  team_id    = local.shared_team_id
+  project_id = local.shared_project_id
   access     = "maintain"
 }
 
@@ -197,7 +233,7 @@ resource "tfe_team_project_access" "shared_access" {
 resource "tfe_team_project_access" "shared_contributors" {
   count      = (!local.assignment_per_user && var.enable_common_access) ? 1 : 0
   team_id    = local.common_team_id
-  project_id = tfe_project.shared[0].id
+  project_id = local.shared_project_id
   access     = "maintain"
 }
 
