@@ -60,9 +60,9 @@ locals {
 # Bootstrap memberships (now always declared)
 ########################################
 locals {
-  org_membership_map = local.using_locked
-    ? { for email in local.effective_emails : email => email }
-    : { for email in local.effective_emails : email => email }
+  org_membership_map = {
+    for email in local.effective_emails : email => email
+  }
 }
 
 resource "tfe_organization_membership" "org_membership" {
