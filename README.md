@@ -41,12 +41,12 @@ tfc_user_controller/
 ├── assignment_mode.auto.tfvars # Legacy override, normally not needed anymore
 ├── rbac.auto.tfvars.json       # Optional RBAC presets
 ├── terraform.auto.tfvars       # Active scenario configuration
-├── terraform.auto.tfvars.s1.bak  # Scenario 1 example
-├── terraform.auto.tfvars.s2.bak  # Scenario 2 example
-├── terraform.auto.tfvars.s3.bak  # Scenario 3 example
-├── terraform.auto.tfvars.s4.bak  # Scenario 4 example
-├── terraform.auto.tfvars.s5.bak  # Scenario 5 example
-├── terraform.auto.tfvars.s6.bak  # Scenario 6 example
+├── terraform.auto.tfvars.s1    # Scenario 1 example
+├── terraform.auto.tfvars.s2    # Scenario 2 example
+├── terraform.auto.tfvars.s3    # Scenario 3 example
+├── terraform.auto.tfvars.s4    # Scenario 4 example
+├── terraform.auto.tfvars.s5    # Scenario 5 example
+├── terraform.auto.tfvars.s6    # Scenario 6 example
 ├── modules/
 │   ├── users/
 │   │   ├── main.tf
