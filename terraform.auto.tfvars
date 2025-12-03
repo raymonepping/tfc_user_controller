@@ -17,16 +17,9 @@ assignment_mode = "per_user"
 projects_prefix      = "perfect_project"
 personal_team_prefix = "perfect_team"
 
-# Email source from bootstrap.json
-# Example bootstrap.json:
-# {
-#   "emails": [
-#     "raymon.epping@ibm.com",
-#     "alice@example.com",
-#     "bob@example.com"
-#   ]
-# }
-email_source = "bootstrap"
+# Email source for user invitations
+email_source = "locked"
+using_locked = true
 
 # Give a common team access to all user projects (optional)
 # This expects an existing team named "Contributors" in the org
@@ -34,4 +27,4 @@ enable_common_access = true
 common_team_name     = "Contributors"
 
 # Apply RBAC wiring (teams <> projects)
-rbac_dry_run = false
+rbac_dry_run = true
