@@ -28,6 +28,10 @@ personal_team_prefix = "perfect_team"
 # }
 email_source = "bootstrap"
 
+# Email source based on the locked users map
+email_source = "locked"
+using_locked = true
+
 # Give a common team access to all user projects (optional)
 # This expects an existing team named "Contributors" in the org
 enable_common_access = true
