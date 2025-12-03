@@ -10,7 +10,8 @@
 ##############################################################################
 
 # High level scenario
-profile = "per_user"
+profile         = "per_user"
+assignment_mode = "per_user"
 
 # Per user naming prefixes
 projects_prefix      = "perfect_project"
