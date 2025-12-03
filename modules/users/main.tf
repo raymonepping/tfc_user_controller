@@ -53,7 +53,10 @@ resource "tfe_organization_membership" "org_membership" {
 
   lifecycle {
     ignore_changes  = [email]
-    prevent_destroy = var.protect_memberships
+    # Always protect memberships from destroy.
+    # To intentionally remove users, you would temporarily change this to false
+    # or handle cleanup in a dedicated workflow.
+    prevent_destroy = true
   }
 }
 

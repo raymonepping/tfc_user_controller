@@ -1,8 +1,3 @@
-variable "tfe_organization" {
-  type    = string
-  default = "HUGGING_NL"
-}
-
 variable "assignment_mode" {
   description = "Per user: personal team+project per user. Shared: one team+project for all."
   type        = string
@@ -69,12 +64,6 @@ variable "users" {
   default = {}
 }
 
-variable "emails" {
-  type        = list(string)
-  description = "List of user email addresses to bootstrap"
-  default     = []
-}
-
 variable "using_locked" {
   type        = bool
   description = "Whether to use locked tfvars with user IDs"
@@ -124,10 +113,7 @@ variable "shared_mode" {
   }
 }
 
-locals {
-  # If shared_mode is provided, it overrides shared_project_mode
-  effective_shared_project_mode = var.shared_mode != "" ? var.shared_mode : var.shared_project_mode
-}
+
 
 variable "shared_team_mode" {
   type        = string

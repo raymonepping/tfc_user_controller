@@ -50,9 +50,9 @@ output "effective_emails" {
 output "topology" {
   description = "Full mapping of emails, memberships, teams, and projects"
   value = {
-    assignment_mode      = local.effective_assignment_mode
-    email_source         = local.effective_email_source
-    rbac_dry_run         = var.rbac_dry_run
+    assignment_mode = local.effective_assignment_mode
+    email_source    = local.effective_email_source
+    rbac_dry_run    = var.rbac_dry_run
     shared = {
       project_id  = module.projects.shared_project_id
       team_id     = module.teams.shared_team_id

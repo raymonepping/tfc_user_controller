@@ -90,18 +90,5 @@ locals {
     email => try(tfe_team.personal[email].id, null)
   }
 
-  shared_team_id = var.assignment_per_user ? null : (
-    local.shared_using_existing
-    ? data.tfe_team.shared[0].id
-    : tfe_team.shared[0].id
-  )
-}
-
-locals {
-  personal_team_ids = {
-    for email, username in var.usernames :
-    email => try(tfe_team.personal[email].id, null)
-  }
-
   shared_team_id = var.assignment_per_user ? null : tfe_team.shared[0].id
 }
