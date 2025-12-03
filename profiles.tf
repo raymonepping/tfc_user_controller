@@ -64,9 +64,11 @@ locals {
     }
   }
 
+  # Selected profile settings
   profile_settings = lookup(
     local.controller_profiles,
     var.profile,
     local.controller_profiles.shared_existing_project_new_team
   )
+
 }

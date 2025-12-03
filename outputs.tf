@@ -34,8 +34,8 @@ output "credentials_json" {
 ########################################
 
 output "assignment_mode_effective" {
-  description = "Whether per user mode or shared mode was used"
-  value       = var.assignment_mode
+  description = "Whether per-user mode or shared mode was used"
+  value       = local.effective_assignment_mode
 }
 
 ########################################
