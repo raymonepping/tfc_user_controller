@@ -1,17 +1,19 @@
 ##############################################################################
-# Scenario 1: Existing project + existing team
+# Scenario 2: Existing project + new shared team ...
 #
-# Users from bootstrap.json are added to:
+# Users from var.emails are added to:
 #   - existing project: "Default Project"
-#   - existing team:    "Contributors"
+#   - new team:         "terrible_team"
 ##############################################################################
 
 # High level scenario
-profile = "shared_existing_project_existing_team"
+profile = "shared_existing_project_new_team"
 
-# Existing TFC project and team
+# Existing TFC project name
 shared_project_name = "Default Project"
-shared_team_name    = "Contributors"
+
+# New shared team that will be created for this cohort
+shared_team_name = "terrible_team"
 
 # Email source comes from bootstrap.json
 email_source = "bootstrap"

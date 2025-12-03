@@ -1,277 +1,555 @@
+````markdown
 # 🧩 Terraform Cloud User Controller
 
-Automate the onboarding of tens or hundreds of users into Terraform Cloud — safely, repeatably, and with one command.
+Automate the onboarding of tens or hundreds of users into Terraform Cloud / HCP Terraform in a way that is **safe, repeatable, and scenario driven**.
 
-Built for workshops, demos, and real-world environments where you want to **create users, assign them to teams and projects, and never destroy what already works**.
+Built for workshops, demos, and real environments where you want to:
 
----
-
-## 🚀 Features
-
-✅ **Bootstrap new users** from a simple JSON file  
-✅ **Automatically create** per-user projects and teams  
-✅ **Supports shared mode** (one team/project for everyone)  
-✅ **Locks users** so Terraform never deletes them by accident  
-✅ **Add or remove users** safely across reruns  
-✅ **Converts JSON → HCL** with an included Bash script  
-✅ **Clean, modular, and ready for workshops**
+- Create or reuse users, teams, and projects  
+- Switch between shared and per user layouts  
+- Lock users so you never lose them  
+- Validate RBAC topology without changing anything
 
 ---
 
-## 🧭 Repository Overview
+## 🚀 What this controller does
 
-```
+✅ **Bootstrap users** from `bootstrap.json`, inline lists, or a locked map  
+✅ **Create or reuse** shared projects and teams  
+✅ **Create per user sandboxes** (project + team per user)  
+✅ **Support locked users** so Terraform never deletes them by accident  
+✅ **Run RBAC dry runs** to inspect topology without changes  
+✅ **Pull users from TFC** and convert JSON to HCL with included scripts  
+✅ **Expose a `topology` output** that describes the full wiring  
+✅ **Clean, modular structure** with separate users, projects, teams, and RBAC modules
 
+---
+
+## 🧭 Repository overview
+
+```text
 tfc_user_controller/
-├── main.tf                     # Core logic for user, project, and team management
-├── variables.tf                # All configurable variables and mode toggles
-├── outputs.tf                  # Exposes IDs and names for downstream use
+├── backend.tf                  # Remote backend (TFC workspace)
+├── data.tf                     # Organization and workspace data sources
+├── main.tf                     # Root orchestration, module wiring, topology
+├── variables.tf                # Global variables and toggles
+├── profiles.tf                 # High level profiles (scenarios)
+├── outputs.tf                  # Topology and helper outputs
 ├── versions.tf                 # Provider and Terraform version pins
-├── bootstrap.json              # Input list of user emails
-├── locked_users.auto.tfvars    # Generated HCL map of locked users
-├── assignment_mode.auto.tfvars # Choose between per-user or shared mode
+├── bootstrap.json              # Input list of user emails (bootstrap mode)
+├── locked_users.auto.tfvars    # HCL map of locked users (Scenario 5)
+├── assignment_mode.auto.tfvars # Legacy override, normally not needed anymore
+├── rbac.auto.tfvars.json       # Optional RBAC presets
+├── terraform.auto.tfvars       # Active scenario configuration
+├── terraform.auto.tfvars.s1.bak  # Scenario 1 example
+├── terraform.auto.tfvars.s2.bak  # Scenario 2 example
+├── terraform.auto.tfvars.s3.bak  # Scenario 3 example
+├── terraform.auto.tfvars.s4.bak  # Scenario 4 example
+├── terraform.auto.tfvars.s5.bak  # Scenario 5 example
+├── terraform.auto.tfvars.s6.bak  # Scenario 6 example
+├── modules/
+│   ├── users/
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── projects/
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── teams/
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   └── rbac/
+│       ├── main.tf
+│       ├── outputs.tf
+│       └── variables.tf
+├── documentation/
+│   ├── LOADING_USERS.md        # Detailed user loading strategies
+│   └── SCRIPTS.md              # Script reference
 ├── scripts/
-│   └── generate_tfvars_from_json.sh  # Converts JSON credentials to HCL
-└── .env.example                # Environment variables for Terraform Cloud
-
+│   ├── output/
+│   │   ├── credentials_from_tfc.json
+│   │   ├── drift_tfe_team_personal__*.json
+│   │   ├── live_diff_tfe_team_personal__*.json
+│   │   └── rights_*.json
+│   ├── generate_tfvars_from_json.sh*
+│   ├── pull_credentials_from_tfc.sh*
+│   ├── start_terraform_agent.sh*
+│   ├── tfc_diff_live_object.sh*
+│   ├── tfc_diff_object.sh*
+│   ├── tfc_drift.sh*
+│   └── tfc_rights_extract.sh*
+├── LICENSE
+└── README.md
 ````
 
 ---
 
 ## ⚙️ Prerequisites
 
-- **Terraform CLI** ≥ 1.7  
-- **Terraform Cloud/Enterprise account**  
-- **TFE API Token** with organization admin rights  
-- **Bash** and **jq** installed  
-- Internet access to Terraform Cloud API  
+* **Terraform CLI** ≥ 1.7
+* **Terraform Cloud / HCP Terraform organization**
+* **TFE API token** with rights to manage teams, projects, and memberships
+* **Bash** and **jq** for the helper scripts
+* Internet access to Terraform Cloud / HCP Terraform
+
+Some scripts expect environment variables such as `TFE_TOKEN` and `TFE_HOST`. 
+See `documentation/LOADING_USERS.md` and `documentation/SCRIPTS.md` for details.
 
 ---
 
-## 🌍 Environment Setup
+## 🌍 Environment setup
 
-Create a `.env` file in the project root:
+Typical local flow:
 
 ```bash
-# Terraform Enterprise Variables
-TFE_TOKEN=your-tfe-api-token
-TFE_HOST=app.terraform.io
-````
+# Initialize the backend and providers
+terraform init
 
-Then load it before running Terraform:
-
-```bash
-source .env
+# Select or edit your desired scenario in terraform.auto.tfvars
+# Then run:
+terraform plan
+terraform apply
 ```
+
+The backend (organization and workspace) is configured in `backend.tf`.
+Organization and workspace metadata are pulled via `data.tf`.
 
 ---
 
-## 🧩 Modes of Operation
+## 🧩 Core concepts
 
-### Option A — Per-User Mode (Default)
+### Profiles
 
-Each user gets:
+Profiles in `profiles.tf` capture the high level intent. They combine multiple low level flags into one scenario label.
 
-* `project_<username>`
-* `team_<username>`
+Supported profiles:
 
-```hcl
-assignment_mode = "per_user"
-```
+* `shared_existing_project_existing_team`
+* `shared_existing_project_new_team`
+* `shared_new_project_new_team`
+* `per_user`
 
-### Option B — Shared Mode
-
-All users join one project and one team — great for labs or hackathons.
+You select a profile in `terraform.auto.tfvars`:
 
 ```hcl
-assignment_mode     = "shared"
-shared_project_name = "project_chicago"
-shared_team_name    = "team_bulls"
+profile = "per_user"
 ```
 
-👉 These live in `assignment_mode.auto.tfvars`, **not** in your locked users file.
+You can override individual knobs (like `assignment_mode`) in the same file if you want more control.
 
 ---
 
-## 🧰 The Bootstrap Flow
+### Email sources
 
-### Step 1 — Define Users
+You tell the controller where to get its user list via `email_source`:
 
-Create a simple `bootstrap.json` file:
-
-```json
-{
-  "emails": [
-    "raymon@hashicorp.com",
-    "cojan@hashicorp.com"
-  ]
+```hcl
+variable "email_source" {
+  type        = string
+  description = "Where to load emails from: bootstrap.json, variable list, or locked users"
+  default     = ""
 }
 ```
 
-### Step 2 — Initialize Terraform
+Supported values:
 
-```bash
-terraform init
-```
+1. `bootstrap`
+   Emails come from `bootstrap.json`:
 
-### Step 3 — Bootstrap Users
+   ```json
+   {
+     "emails": [
+       "alice@example.com",
+       "bob@example.com"
+     ]
+   }
+   ```
 
-```bash
-terraform plan && terraform apply -auto-approve
-```
+2. `variable`
+   Emails are passed inline:
 
-This will:
+   ```hcl
+   email_source = "variable"
+   emails = [
+     "alice@example.com",
+     "bob@example.com"
+   ]
+   ```
 
-* Create org memberships for all listed users
-* Create per-user or shared projects and teams
-* Assign access permissions
+3. `locked`
+   Emails and IDs come from the `users` map (locked mode):
 
-Terraform also writes a machine-readable credentials file:
+   ```hcl
+   email_source = "locked"
+   using_locked = true
 
-```
-credentials.auto.tfvars.json
-```
-
-### Step 4 — Convert JSON → HCL
-
-```bash
-./scripts/generate_tfvars_from_json.sh credentials.auto.tfvars.json
-```
-
-This creates:
-
-```
-locked_users.auto.tfvars
-```
-
-From now on, Terraform will use this HCL map for steady-state user management.
-
-### Step 5 — Add More Users
-
-Append to `bootstrap.json` and reapply Terraform:
-
-```bash
-terraform apply -auto-approve
-```
-
-Run the conversion again to refresh the locked file:
-
-```bash
-./scripts/generate_tfvars_from_json.sh credentials.auto.tfvars.json
-```
-
-Terraform will now ignore previously locked users and only add the new ones.
+   users = {
+     "alice@example.com" = {
+       username      = "alice"
+       membership_id = "om-123"
+       user_id       = "user-abc"
+     }
+   }
+   ```
 
 ---
 
-## 🧼 Optional Cleanup
+### Locked users
 
-To remove temporary files automatically:
+Locked users are stored in `locked_users.auto.tfvars`:
 
-```bash
-./scripts/generate_tfvars_from_json.sh credentials.auto.tfvars.json --cleanup
-```
+* `scripts/pull_credentials_from_tfc.sh` pulls credentials from TFC into JSON
+* `scripts/generate_tfvars_from_json.sh ./scripts/output/credentials_from_tfc.json` converts that JSON into HCL
 
-This deletes the JSON after successful HCL conversion.
-
----
-
-## 🧩 Removing or Resetting Users
-
-* **Remove a user** from `locked_users.auto.tfvars` → Terraform will plan to destroy their project/team.
-* **Empty the file completely** → Terraform will plan to remove *all* previously locked users (subject to any `prevent_destroy` lifecycle rules).
-
-Safety first:
-
-* By default, `tfe_organization_membership` uses `prevent_destroy = true` to avoid accidental removal.
-* You can disable it when you intentionally want a full cleanup.
-
----
-
-## 🧱 Example Command Sequence
-
-```bash
-# 1️⃣ Initialize
-terraform init
-
-# 2️⃣ Bootstrap users
-terraform apply -auto-approve
-
-# 3️⃣ Convert to locked file
-./scripts/generate_tfvars_from_json.sh credentials.auto.tfvars.json
-
-# 4️⃣ Add more users and rerun
-terraform apply -auto-approve
-./scripts/generate_tfvars_from_json.sh credentials.auto.tfvars.json
-```
-
----
-
-## 🧠 How It Works
-
-| Phase         | Description                                                  |
-| ------------- | ------------------------------------------------------------ |
-| **Bootstrap** | Reads `bootstrap.json` → creates users, projects, and teams. |
-| **Lock**      | Converts credentials JSON → HCL → prevents deletions.        |
-| **Expand**    | Add new users → Terraform adds only what’s new.              |
-| **Re-lock**   | Refresh HCL and maintain idempotence.                        |
-
-You can switch between per-user and shared modes at any time — just update the `assignment_mode.auto.tfvars` file before bootstrapping.
-
----
-
-## 🪄 Script Details
-
-Script: [`scripts/generate_tfvars_from_json.sh`](https://github.com/raymonepping/tfc_user_controller/blob/main/scripts/generate_tfvars_from_json.sh)
-
-Converts:
-
-```json
-{
-  "users": {
-    "raymon@hashicorp.com": {
-      "username": "raymon",
-      "membership_id": "ou-xyz123",
-      "user_id": ""
-    }
-  }
-}
-```
-
-To:
+Example locked file:
 
 ```hcl
 users = {
-  "raymon@hashicorp.com" = {
-    username      = "raymon"
-    membership_id = "ou-xyz123"
+  "raymon.epping@ibm.com" = {
+    username      = "raymon_epping"
+    membership_id = "ou-QerzN71cdBCWGhhf"
     user_id       = ""
   }
 }
 ```
 
+In locked mode:
+
+* Emails come from this `users` map
+* Membership IDs and user IDs are trusted from here
+* Membership resources are protected with `prevent_destroy = true`
+
+See `documentation/LOADING_USERS.md` for a deep dive.
+
 ---
 
-## 🧩 Folder Cleanliness
+## 🧱 The six scenarios
 
-This repository intentionally **ignores `.tf` backups, state files, and temp files** via `.gitignore`.
-Your working directory stays clean between runs — just keep the essential `bootstrap.json` and locked files.
+The controller supports six practical scenarios.
+
+```table
+| Scenario | Description                                  | Profile                                 | assignment_mode | email_source | locked | rbac_dry_run |
+| -------- | -------------------------------------------- | --------------------------------------- | --------------- | ------------ | ------ | ------------ |
+| 1        | Existing project, existing team              | `shared_existing_project_existing_team` | shared          | bootstrap    | no     | false        |
+| 2        | Existing project, new shared team            | `shared_existing_project_new_team`      | shared          | bootstrap    | no     | false        |
+| 3        | New shared project, new shared team          | `shared_new_project_new_team`           | shared          | bootstrap    | no     | false        |
+| 4        | Per user sandboxes (project + team per user) | `per_user`                              | per_user        | bootstrap    | no     | false        |
+| 5        | Per user sandboxes with locked users         | `per_user`                              | per_user        | locked       | yes    | true/false   |
+| 6        | RBAC validation and topology only            | any of the above                        | varies          | varies       | varies | true         |
+```
+
+You have ready made `terraform.auto.tfvars.sX.bak` example files for each scenario:
+
+* `terraform.auto.tfvars.s1` → Scenario 1
+* `terraform.auto.tfvars.s2` → Scenario 2
+* `terraform.auto.tfvars.s3` → Scenario 3
+* `terraform.auto.tfvars.s4` → Scenario 4
+* `terraform.auto.tfvars.s5` → Scenario 5
+* `terraform.auto.tfvars.s6` → Example RBAC validation config
+
+Copy the desired `.bak` to `terraform.auto.tfvars`, adjust names and emails, then run `terraform plan`.
 
 ---
 
-## 🤝 Credits
+## 🧮 Scenario examples
 
-**Origin:** Cojan’s Terraform prototype for user/team creation  
-**Expanded by:** Raymon Epping  
-**Goal:** Build a reusable, workshop-friendly pipeline for managing Terraform Cloud users safely and at scale.  
+### Scenario 1
+
+Existing project and existing team
+
+Users from `bootstrap.json` are added to:
+
+* Existing project `Default Project`
+* Existing team `Contributors`
+
+```hcl
+##############################################################################
+# Scenario 1: Existing project + existing team
+##############################################################################
+
+profile = "shared_existing_project_existing_team"
+
+shared_project_name = "Default Project"
+shared_team_name    = "Contributors"
+
+email_source = "bootstrap"
+
+enable_common_access = false
+rbac_dry_run         = false
+```
+
+---
+
+### Scenario 2
+
+Existing project and new shared team
+
+Users are added to a new shared team that is attached to an existing project.
+
+```hcl
+##############################################################################
+# Scenario 2: Existing project + new shared team
+##############################################################################
+
+profile = "shared_existing_project_new_team"
+
+shared_project_name = "Default Project"
+shared_team_name    = "terrible_team"
+
+email_source = "bootstrap"
+
+enable_common_access = false
+rbac_dry_run         = false
+```
+
+---
+
+### Scenario 3
+
+New shared project and new shared team
+
+Terraform creates a new project and shared team.
+
+```hcl
+##############################################################################
+# Scenario 3: New shared project + new shared team
+##############################################################################
+
+profile = "shared_new_project_new_team"
+
+shared_project_name = "Workshop_Default"
+shared_team_name    = "Workshop_Default_Team"
+
+email_source = "bootstrap"
+
+enable_common_access = false
+rbac_dry_run         = false
+```
+
+---
+
+### Scenario 4
+
+Per user sandboxes
+
+Each user gets a dedicated project and team.
+
+```hcl
+##############################################################################
+# Scenario 4: Per user sandboxes (per user project + team)
+##############################################################################
+
+profile         = "per_user"
+assignment_mode = "per_user"
+
+projects_prefix      = "perfect_project"
+personal_team_prefix = "perfect_team"
+
+email_source = "bootstrap"
+
+enable_common_access = true
+common_team_name     = "Contributors"
+
+rbac_dry_run = false
+```
+
+---
+
+### Scenario 5
+
+Per user sandboxes with locked users
+
+Same layout as Scenario 4, but based on locked users loaded from TFC and converted to HCL.
+
+`locked_users.auto.tfvars`:
+
+```hcl
+users = {
+  "raymon.epping@ibm.com" = {
+    username      = "raymon_epping"
+    membership_id = "ou-QerzN71cdBCWGhhf"
+    user_id       = ""
+  }
+}
+```
+
+`terraform.auto.tfvars`:
+
+```hcl
+##############################################################################
+# Scenario 5: Per user sandboxes, locked mode
+##############################################################################
+
+profile         = "per_user"
+assignment_mode = "per_user"
+
+email_source = "locked"
+using_locked = true
+
+projects_prefix      = "perfect_project"
+personal_team_prefix = "perfect_team"
+
+enable_common_access = true
+common_team_name     = "Contributors"
+
+# Start in validation mode
+rbac_dry_run = true
+```
+
+Once the topology looks correct, set `rbac_dry_run = false` to apply RBAC while keeping memberships protected.
+
+---
+
+### Scenario 6
+
+RBAC validation and topology only
+
+Scenario 6 is a mode that you layer on top of any scenario by setting:
+
+```hcl
+rbac_dry_run = true
+```
+
+Typical flow:
+
+```bash
+terraform plan
+terraform output -json topology
+```
+
+This lets you inspect:
+
+* Which users map to which usernames
+* Which teams and projects exist
+* How RBAC would be wired
+
+All without changing team memberships or project access.
+
+---
+
+## 📡 Topology output
+
+The controller exposes a synthetic `topology` output.
+
+Example:
+
+```bash
+terraform output -json topology
+```
+
+Example structure:
+
+```json
+{
+  "assignment_mode": "per_user",
+  "email_source": "locked",
+  "rbac_dry_run": true,
+  "shared": {
+    "common_team": "team-tbk4UtUPJAjuFJM9",
+    "project_id": null,
+    "team_id": null
+  },
+  "users": {
+    "raymon.epping@ibm.com": {
+      "username": "raymon_epping",
+      "membership_id": "ou-QerzN71cdBCWGhhf",
+      "user_id": "",
+      "personal_team": "team-XGWgZBvm5wkR9UA2",
+      "personal_proj": "prj-BGiGpqxFZeRNhU3p"
+    }
+  }
+}
+```
+
+A few useful jq helpers:
+
+List users with their team and project ids:
+
+```bash
+terraform output -json topology \
+  | jq '.users | to_entries[] | {email: .key, username: .value.username, team: .value.personal_team, project: .value.personal_proj}'
+```
+
+List all membership ids:
+
+```bash
+terraform output -json topology \
+  | jq '.users | to_entries[] | {email: .key, membership_id: .value.membership_id}'
+```
+
+Inspect the shared topology:
+
+```bash
+terraform output -json topology \
+  | jq '.shared'
+```
+
+---
+
+## 🔐 Safety and deletion protection
+
+User safety is handled in two layers:
+
+1. **Locked mode**
+
+   * `email_source = "locked"`
+   * `using_locked = true`
+   * Source of truth is the `users` map in `locked_users.auto.tfvars`
+
+2. **Membership `prevent_destroy`**
+   In `modules/users/main.tf`:
+
+   ```hcl
+   lifecycle {
+     ignore_changes  = [email]
+     prevent_destroy = true
+   }
+   ```
+
+   This guarantees:
+
+   * Terraform will not destroy organization memberships.
+   * To intentionally delete memberships you must temporarily change this line and be explicit about it.
+
+This makes the controller safe for workshops and shared environments where accidentally removing users would be painful.
+
+---
+
+## 🧰 Scripts
+
+The `scripts/` folder contains helper tooling for:
+
+* Pulling existing user credentials from TFC
+* Comparing configuration vs state and live data
+* Converting JSON credentials to HCL locked maps
+* Inspecting rights and drift
+
+Key ones for the locked user flow:
+
+* `scripts/pull_credentials_from_tfc.sh`
+  Pulls credentials from the TFC workspace into `scripts/output/credentials_from_tfc.json`.
+
+* `scripts/generate_tfvars_from_json.sh ./scripts/output/credentials_from_tfc.json`
+  Converts JSON into `locked_users.auto.tfvars`.
+
+Full details in:
+
+* `documentation/LOADING_USERS.md`
+* `documentation/SCRIPTS.md`
 
 ---
 
 ## 🧠 Born from How I Use AI as My DevOps Copilot
 
-🤖 Powered by Sally — my AI DevOps copilot
+🤖 Powered by Sally my AI DevOps copilot
 🚀 Because automation should automate itself.
+
+---
 
 ## 🧾 License
 
 [GPLv3](LICENSE) © Raymon Epping
+
+```
