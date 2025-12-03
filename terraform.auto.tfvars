@@ -24,4 +24,4 @@ common_team_name     = "Contributors"
 
 # Safe first run: set to true if you just want to see the topology
 # and ensure no RBAC changes. Once happy, flip to false to apply.
-rbac_dry_run = true
+rbac_dry_run = false
