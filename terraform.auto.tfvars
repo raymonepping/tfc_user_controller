@@ -1,27 +1,37 @@
 ##############################################################################
-# Scenario 6: RBAC validation
+# Scenario 4: Per user sandboxes (per user project + team)
 #
-# - Reuse users and IDs from locked_users.auto.tfvars
-# - Do not create or destroy organization memberships
-# - Still manage projects, teams, and RBAC
+# For each email:
+#   - project: "workshop_project_<username>"
+#   - team:    "workshop_team_<username>"
+#   - team has maintain on that project
+# Optional:
+#   - common team "Contributors" gets access to all projects
 ##############################################################################
 
 # High level scenario
 profile         = "per_user"
 assignment_mode = "per_user"
 
-# Email source based on the locked users map
-email_source = "locked"
-using_locked = true
-
-# Per user naming prefixes (must match Scenario 4)
+# Per user naming prefixes
 projects_prefix      = "perfect_project"
 personal_team_prefix = "perfect_team"
 
-# Common team still has access to all projects (optional)
+# Email source from bootstrap.json
+# Example bootstrap.json:
+# {
+#   "emails": [
+#     "raymon.epping@ibm.com",
+#     "alice@example.com",
+#     "bob@example.com"
+#   ]
+# }
+email_source = "bootstrap"
+
+# Give a common team access to all user projects (optional)
+# This expects an existing team named "Contributors" in the org
 enable_common_access = true
 common_team_name     = "Contributors"
 
-# Safe first run: set to true if you just want to see the topology
-# and ensure no RBAC changes. Once happy, flip to false to apply.
+# Apply RBAC wiring (teams <> projects)
 rbac_dry_run = false
