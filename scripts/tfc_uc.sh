@@ -8,6 +8,7 @@ LOAD_USERS="none"      # valid: none, tfc
 AUTO_APPLY="false"     # valid: true, false (only relevant for mode=local)
 OUT_DIR="./scripts/output"
 MODE="scenario"        # valid: scenario, local, git, actual
+SHOW_TOPOLOGY="false"   # valid: true, false (local mode only)
 
 # Simple ANSI colors
 BOLD=$'\e[1m'
@@ -56,6 +57,10 @@ ${BOLD}Options:${RESET}
                               git      update files and run commit_gh or scripts/commit_gh.sh
                               actual   inspect and print current active scenario from terraform.auto.tfvars
 
+      ${CYAN}--show-topology <bool>${RESET} (mode=local or shortcut)
+                            If true in mode=local, run "terraform output -json topology | jq ."
+                            If passed without --scenario, only print topology and exit
+
   ${CYAN}-h, --help${RESET}                Show this help and exit
 
 ${BOLD}Examples:${RESET}
@@ -70,6 +75,9 @@ ${BOLD}Examples:${RESET}
 
   ${DIM}# Just show the currently active scenario (from terraform.auto.tfvars)${RESET}
   ./scripts/${SCRIPT_NAME} --mode actual
+
+  ${DIM}# RBAC validation only with topology dump${RESET}
+  ./scripts/${SCRIPT_NAME} -s 6 --mode local --show-topology true
 
 EOF
 }
@@ -102,6 +110,10 @@ while [[ $# -gt 0 ]]; do
       MODE="${2:-}"
       shift 2
       ;;
+    --show-topology)
+      SHOW_TOPOLOGY="${2:-}"
+      shift 2
+      ;;
     -h|--help)
       print_help
       exit 0
@@ -128,6 +140,31 @@ fi
 # Ensure we are in repo root
 if [[ ! -f "main.tf" ]]; then
   error "This script must be run from the repository root (main.tf must exist)."
+fi
+
+if [[ "${SHOW_TOPOLOGY}" != "true" && "${SHOW_TOPOLOGY}" != "false" ]]; then
+  error "Invalid --show-topology value: ${SHOW_TOPOLOGY}. Use 'true' or 'false'."
+fi
+
+if [[ "${SHOW_TOPOLOGY}" == "true" && "${MODE}" == "scenario" && -z "${SCENARIO}" ]]; then
+  echo "🔍 Topology-only shortcut"
+  echo "   No scenario selected."
+  echo "   No files will be changed."
+  echo "   No terraform plan or apply will be run."
+  echo
+
+  if command -v jq >/dev/null 2>&1; then
+    echo "🧩 Running: terraform output -json topology | jq ."
+    terraform output -json topology | jq .
+  else
+    echo "ℹ️ jq not found, falling back to:"
+    echo "   terraform output topology"
+    terraform output topology
+  fi
+
+  echo
+  echo "✅ Done. Topology inspected, nothing else touched."
+  exit 0
 fi
 
 ########################################
@@ -309,6 +346,17 @@ if [[ "${AUTO_APPLY}" == "true" ]]; then
 else
   echo "🔍 Running terraform plan..."
   terraform plan
+fi
+
+if [[ "${SHOW_TOPOLOGY}" == "true" ]]; then
+  echo
+  echo "🧩 Showing topology output (terraform output -json topology | jq .)..."
+  if command -v jq >/dev/null 2>&1; then
+    terraform output -json topology | jq .
+  else
+    echo "ℹ️ jq not found, falling back to raw output:"
+    terraform output topology
+  fi
 fi
 
 echo
