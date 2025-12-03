@@ -1,23 +1,25 @@
 ##############################################################################
-# Scenario 1: Existing project + existing team
+# Scenario 3: New shared project + new shared team
 #
-# Users from bootstrap.json are added to:
-#   - existing project: "Default Project"
-#   - existing team:    "Contributors"
+# Terraform will:
+#   - create shared project: "Workshop_Default"
+#   - create shared team:    "Workshop_Default_Team"
+#   - add all emails to that team
+#   - give the team "maintain" on the project
 ##############################################################################
 
 # High level scenario
-profile = "shared_existing_project_existing_team"
+profile = "shared_new_project_new_team"
 
-# Existing TFC project and team
-shared_project_name = "Default Project"
-shared_team_name    = "Contributors"
+# New shared project and team to create
+shared_project_name = "Amazing_Project"
+shared_team_name    = "Terrible_Team"
 
-# Email source comes from bootstrap.json
+# Emails from bootstrap.json
 email_source = "bootstrap"
 
-# Use org level "Contributors" team only, no extra common access logic
+# For now, no extra common team
 enable_common_access = false
 
-# Actually apply RBAC changes
-rbac_dry_run = false
+# Apply RBAC bindings
+rbac_dry_run = true

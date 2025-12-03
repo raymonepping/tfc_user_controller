@@ -22,4 +22,4 @@ email_source = "bootstrap"
 enable_common_access = false
 
 # Apply RBAC bindings
-rbac_dry_run = false
+rbac_dry_run = true
