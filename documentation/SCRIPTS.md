@@ -384,7 +384,7 @@ The rubber 🦆 stays safe.
 
 ---
 
-That is it. The controller logic lives in the Terraform modules.
+That is it. The controller logic lives in the Terraform modules.  
 These scripts are the 🍒 on the 🍰.
 
 That make it enjoyable to drive in front of a room.
