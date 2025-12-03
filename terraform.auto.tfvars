@@ -1,5 +1,5 @@
 ##############################################################################
-# Scenario 5: Per user sandboxes, locked mode
+# Scenario 6: RBAC validation
 #
 # - Reuse users and IDs from locked_users.auto.tfvars
 # - Do not create or destroy organization memberships
@@ -24,4 +24,4 @@ common_team_name     = "Contributors"
 
 # Safe first run: set to true if you just want to see the topology
 # and ensure no RBAC changes. Once happy, flip to false to apply.
-rbac_dry_run = false
+rbac_dry_run = true
