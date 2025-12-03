@@ -26,7 +26,6 @@ personal_team_prefix = "perfect_team"
 #     "bob@example.com"
 #   ]
 # }
-email_source = "bootstrap"
 
 # Email source based on the locked users map
 email_source = "locked"
