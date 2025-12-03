@@ -13,13 +13,13 @@ Think of it like this:
 
 ## 1. Script Index
 
-```
+```bash
 | Script                                | Location             | Purpose                                                |
 | ------------------------------------- | -------------------- | ------------------------------------------------------ |
 | `tfc_uc.sh`                           | `scripts/`           | Scenario selector and controller wrapper               |
 | `pull_credentials_from_tfc.sh`        | `scripts/`           | Pull `credentials_json` from TFC and update locks      |
 | `generate_tfvars_from_json.sh`        | `scripts/`           | Convert JSON credentials to `locked_users.auto.tfvars` |
-| `start_terraform_agent.sh`           | `scripts/`           | Start a Terraform Agent container for demos            |
+| `start_terraform_agent.sh`            | `scripts/`           | Start a Terraform Agent container for demos            |
 | `tfc_diff_object.sh`                  | `scripts/`           | Compare config vs state for a single TFC object        |
 | `tfc_diff_live_object.sh`             | `scripts/`           | Compare config vs live TFC using refresh-only plan     |
 | `tfc_drift.sh`                        | `scripts/`           | Run a full drift triage workflow                       |
