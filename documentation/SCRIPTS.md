@@ -13,7 +13,7 @@ Think of it like this:
 
 ## 1. Script Index
 
-```table
+```
 | Script                                | Location             | Purpose                                                |
 | ------------------------------------- | -------------------- | ------------------------------------------------------ |
 | `tfc_uc.sh`                           | `scripts/`           | Scenario selector and controller wrapper               |
@@ -28,7 +28,7 @@ Think of it like this:
 
 Scenarios live in:
 
-```text
+```bash
 scenarios/
   terraform.auto.tfvars.s1
   terraform.auto.tfvars.s2
@@ -84,7 +84,7 @@ The wrapper knows about six scenarios:
 
 Each scenario file starts with a header line like:
 
-```hcl
+```text
 # Scenario 3: New shared project + new shared team
 ```
 
