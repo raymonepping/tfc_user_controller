@@ -1,144 +1,388 @@
-# 📘 SCRIPTS.md
+````markdown
+# 🧩 Terraform Cloud User Controller Scripts
 
-Utility scripts included in this workshop
+This folder contains the helper scripts that make the Terraform Cloud User Controller practical for workshops, demos, and real environments.
 
-This page gives you a fast, practical overview of every script in the repo, what it does, and how to use it. Designed so both engineers and newcomers can get started immediately.
+Think of it like this:
+
+- Terraform manages users, teams, projects, and RBAC.
+- These scripts keep everything repeatable, observable, and fun.  
+- `tfc_uc.sh` is your main driver. The rest are focused tools.
 
 ---
 
-# 🚀 Getting Started
+## 1. Script Index
 
-Before using any script:
+```table
+| Script                                | Location             | Purpose                                                |
+| ------------------------------------- | -------------------- | ------------------------------------------------------ |
+| `tfc_uc.sh`                           | `scripts/`           | Scenario selector and controller wrapper               |
+| `pull_credentials_from_tfc.sh`        | `scripts/`           | Pull `credentials_json` from TFC and update locks      |
+| `generate_tfvars_from_json.sh`        | `scripts/`           | Convert JSON credentials to `locked_users.auto.tfvars` |
+| `start_terraform_agent.sh`           | `scripts/`           | Start a Terraform Agent container for demos            |
+| `tfc_diff_object.sh`                  | `scripts/`           | Compare config vs state for a single TFC object        |
+| `tfc_diff_live_object.sh`             | `scripts/`           | Compare config vs live TFC using refresh-only plan     |
+| `tfc_drift.sh`                        | `scripts/`           | Run a full drift triage workflow                       |
+| `tfc_rights_extract.sh`               | `scripts/`           | Extract organization access rights for a team or user  |
+```
 
-1. Clone the repository
+Scenarios live in:
 
-   ```bash
-   git clone https://github.com/raymonepping/hug_workshop.git
-   cd hug_workshop
+```text
+scenarios/
+  terraform.auto.tfvars.s1
+  terraform.auto.tfvars.s2
+  terraform.auto.tfvars.s3
+  terraform.auto.tfvars.s4
+  terraform.auto.tfvars.s5
+  terraform.auto.tfvars.s6
+````
+
+Each scenario file encodes one of the six supported controller modes.
+
+---
+
+## 2. `tfc_uc.sh`  Terraform Cloud User Controller wrapper
+
+**File:** `scripts/tfc_uc.sh`
+**Role:** Main entry point to drive the controller.
+
+### 2.1 What it does
+
+1. Activates a scenario by copying:
+
+   ```text
+   scenarios/terraform.auto.tfvars.sN -> terraform.auto.tfvars
    ```
 
-2. Copy and adjust the relevant `.env` files:
+2. Optionally pulls users from Terraform Cloud and regenerates `locked_users.auto.tfvars` using:
+
+   * `scripts/pull_credentials_from_tfc.sh`
+   * `scripts/generate_tfvars_from_json.sh`
+
+3. Runs in one of four modes:
+
+   * `scenario`
+     Only switch scenario and optionally refresh locks. No Terraform, no git.
+   * `local`
+     Run `terraform init` and `terraform plan` or `terraform apply` locally.
+   * `git`
+     Commit changes so the Terraform Cloud git workspace picks up the new scenario.
+   * `actual`
+     Inspect `terraform.auto.tfvars` and print the currently active scenario.
+
+### 2.2 Scenarios
+
+The wrapper knows about six scenarios:
+
+1. Existing project, existing team
+2. Existing project, new shared team
+3. New shared project, new shared team
+4. Per user sandboxes, project and team per user
+5. Per user sandboxes, locked users
+6. RBAC validation and topology only, typically with locked users
+
+Each scenario file starts with a header line like:
+
+```hcl
+# Scenario 3: New shared project + new shared team
+```
+
+### 2.3 Common usage examples
+
+**Only activate a scenario, no Terraform, no git**
+
+```bash
+./scripts/tfc_uc.sh --scenario 1
+# or
+./scripts/tfc_uc.sh -s 1 --mode scenario
+```
+
+**Scenario 5, refresh locked users from TFC, local plan**
+
+```bash
+./scripts/tfc_uc.sh -s 5 \
+  --load-users tfc \
+  --mode local \
+  --auto-apply false
+```
+
+**Scenario 5, refresh locked users, commit to git**
+
+```bash
+./scripts/tfc_uc.sh -s 5 \
+  --load-users tfc \
+  --mode git
+```
+
+This uses:
+
+* `commit_gh` from your `$PATH` if available, or
+* falls back to `./scripts/commit_gh.sh` if that exists and is executable.
+
+Terraform Cloud then runs the plan in the git based workspace.
+
+**Only inspect the currently active scenario**
+
+```bash
+./scripts/tfc_uc.sh --mode actual
+```
+
+Sample output:
+
+```text
+🔍 Active scenario inspection (mode=actual)
+   terraform.auto.tfvars header : # Scenario 3: New shared project + new shared team
+   Detected scenario number     : 3
+   Detected scenario desc       : shared: new shared project + new shared team
+   Matching scenario file       : scenarios/terraform.auto.tfvars.s3 (present)
+
+   No files were changed.
+   No terraform commands were run.
+   No git commits were made.
+
+   Not a single rubber duck was sacrificed for debugging. 🦆
+```
+
+This is the safe, read only way to check what the controller is about to do.
+
+---
+
+## 3. `pull_credentials_from_tfc.sh`
+
+**File:** `scripts/pull_credentials_from_tfc.sh`
+**Role:** Fetch `credentials_json` from Terraform and regenerate the locked tfvars file.
+
+### 3.1 What it does
+
+1. Runs:
 
    ```bash
-   cp env_examples/_env_* .
+   terraform output -json credentials_json
    ```
 
-3. Make scripts executable (if needed):
+2. Writes the result to:
+
+   ```text
+   ./scripts/output/credentials_from_tfc.json
+   ```
+
+3. Calls:
 
    ```bash
-   chmod +x *.sh Vault/*.sh
+   ./scripts/generate_tfvars_from_json.sh ./scripts/output/credentials_from_tfc.json
    ```
 
-You are ready to run backend, frontend, database, Vault, and Terraform workflows.
+   to regenerate `locked_users.auto.tfvars` in the repo root.
 
----
+### 3.2 Usage
 
-# 📂 Folder Structure
-
-```
-./
-├── output/
-│   └── credentials_pretty.json
-├── Vault/
-│   ├── login_vault.sh
-│   └── unwrap_story.sh
-├── construct_container.sh
-├── seed_dataset.sh
-└── start_terraform_agent.sh
-```
-
----
-
-# 🧰 Script Reference
-
----
-
-## 🏗️ construct_container.sh
-
-Builds the backend or frontend container image for local testing or later deployment through Terraform.
-
-**Typical usage:**
+Normally called through `tfc_uc.sh` when `--load-users tfc` is set.
+You can also run it directly:
 
 ```bash
-./construct_container.sh backend
-./construct_container.sh frontend
+./scripts/pull_credentials_from_tfc.sh
+# or with a custom output directory
+./scripts/pull_credentials_from_tfc.sh ./tmp/output
 ```
-
-**What it does:**
-Packages your chosen component into a container image, tags it, and prepares it for local runs or registry pushes.
 
 ---
 
-## 🌱 seed_dataset.sh
+## 4. `generate_tfvars_from_json.sh`
 
-Seeds any supported workshop database (MySQL, PostgreSQL, MongoDB, Couchbase) with the demo dataset.
+**File:** `scripts/generate_tfvars_from_json.sh`
+**Role:** Convert JSON files into `locked_users.auto.tfvars` for steady state runs.
 
-**Typical usage:**
+### 4.1 Supported inputs
+
+* `bootstrap.json` that contains:
+
+  ```json
+  {
+    "emails": [
+      "alice@example.com",
+      "bob@example.com"
+    ]
+  }
+  ```
+
+  In this mode the script can drive a bootstrap apply and then convert the generated credentials.
+
+* `credentials.auto.tfvars.json` or any JSON that contains a `users` map:
+
+  ```json
+  {
+    "users": {
+      "alice@example.com": {
+        "username": "alice",
+        "membership_id": "ou-abc123",
+        "user_id": ""
+      }
+    }
+  }
+  ```
+
+### 4.2 Output
+
+The script writes:
+
+```hcl
+users = {
+  "alice@example.com" = {
+    username      = "alice"
+    membership_id = "ou-abc123"
+    user_id       = ""
+  }
+}
+```
+
+to:
+
+```text
+locked_users.auto.tfvars
+```
+
+in the repo root.
+
+### 4.3 Usage
+
+Convert an existing JSON credentials file:
 
 ```bash
-./seed_dataset.sh seed \
-  --db-type postgres \
-  --user workshop \
-  --password workshop
+./scripts/generate_tfvars_from_json.sh scripts/output/credentials_from_tfc.json
 ```
 
-**What it does:**
-Initializes tables and loads the sample data used by the backend exercises.
-
----
-
-## ⚙️ start_terraform_agent.sh
-
-Controls your local Terraform agent used by HCP Terraform to run workloads on your machine.
-
-**Typical usage:**
+Optionally clean up the source JSON after conversion:
 
 ```bash
-./start_terraform_agent.sh up
-./start_terraform_agent.sh status
-./start_terraform_agent.sh down
+./scripts/generate_tfvars_from_json.sh scripts/output/credentials_from_tfc.json --cleanup
 ```
-
-**What it does:**
-Starts or stops the agent container, checks logs, and ensures runs from HCP Terraform execute locally.
 
 ---
 
-# 🔐 Vault Scripts
+## 5. `start_terraform_agent.sh`
 
-## 🔑 Vault/login_vault.sh
+**File:** `scripts/start_terraform_agent.sh`
+**Role:** Start a Terraform Agent container for lab scenarios.
 
-Logs into Vault using credentials or wrapped tokens issued for the workshop.
+Typical behavior:
 
-**Typical usage:**
+* Runs a Docker container with the Terraform Agent image.
+* Configures it with your TFC organization and agent token.
+* Prints the agent name and connection status.
+
+Example:
 
 ```bash
-./Vault/login_vault.sh
+./scripts/start_terraform_agent.sh
 ```
 
-**What it does:**
-Authenticates you against the correct Vault namespace and stores a local Vault token for CLI usage.
+Use this when you want to demonstrate agent based execution with the same user controller setup.
 
 ---
 
-## 📦 Vault/unwrap_story.sh
+## 6. Drift and diff helpers
 
-Unwraps the story tokens distributed to participants to retrieve hidden payloads or next steps.
+These scripts are optional but helpful when you want to explain or debug the controller behavior in workshops.
 
-**Typical usage:**
+### 6.1 `tfc_diff_object.sh`
+
+**Role:** Compare desired configuration vs Terraform Cloud state for a single object.
+
+Typical pattern:
 
 ```bash
-./Vault/unwrap_story.sh \
-  token.something.wrappedvalue
+./scripts/tfc_diff_object.sh tfe_team.personal raymon_epping_ibm_com
 ```
 
-**What it does:**
-Exchanges a single-use wrapped token for real Vault content used in the exercise.
+It retrieves the configuration and state representation, writes JSON into `scripts/output`, and shows a summary of differences.
+
+### 6.2 `tfc_diff_live_object.sh`
+
+**Role:** Compare configuration vs live remote data using a refresh only plan.
+
+Usage example:
+
+```bash
+./scripts/tfc_diff_live_object.sh tfe_team.personal raymon_epping_ibm_com
+```
+
+This is useful to show where live TFC diverges from the last applied state.
+
+### 6.3 `tfc_drift.sh`
+
+**Role:** Run a complete drift triage flow.
+
+Conceptually:
+
+* Run a refresh only plan.
+* Capture which resources are out of sync.
+* Write structured results to `scripts/output`.
+* Help you decide if you want to reconcile or leave them as is.
+
+Usage:
+
+```bash
+./scripts/tfc_drift.sh
+```
 
 ---
 
-# 📤 Output Files
+## 7. `tfc_rights_extract.sh`
 
-## 🗒️ output/credentials_pretty.json
+**File:** `scripts/tfc_rights_extract.sh`
+**Role:** Extract organization access levels for teams or users.
 
-A formatted JSON file containing generated workshop credentials or artifacts.
+You can use this in demos to show exactly what rights a workshop team has.
+
+Example:
+
+```bash
+./scripts/tfc_rights_extract.sh team Contributors
+```
+
+The script writes a JSON summary into `scripts/output/rights_<name>.json`.
+
+---
+
+## 8. Typical flows
+
+### 8.1 Onboard a new workshop cohort
+
+1. Prepare `bootstrap.json` with the attendee emails.
+
+2. Select the scenario you want, for example per user sandboxes:
+
+   ```bash
+   ./scripts/tfc_uc.sh -s 4 --mode scenario
+   ```
+
+3. If you start from a clean environment and want fresh locked users:
+
+   ```bash
+   ./scripts/tfc_uc.sh -s 4 --load-users tfc --mode local
+   ```
+
+4. Once everything looks good, switch to git mode so TFC runs all future changes:
+
+   ```bash
+   ./scripts/tfc_uc.sh -s 4 --load-users tfc --mode git
+   ```
+
+### 8.2 Inspect without touching anything
+
+When in doubt, or live on stage:
+
+```bash
+./scripts/tfc_uc.sh --mode actual
+```
+
+You see which scenario is active and which scenario file it maps to. Terraform and git stay untouched. The rubber duck stays safe.
+
+---
+
+That is it. The controller logic lives in the Terraform modules.
+These scripts are the icing on the cake and the cherry on top that make it enjoyable to drive in front of a room. 🍰🍒
+
+```
+```
