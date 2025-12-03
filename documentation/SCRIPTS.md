@@ -5,7 +5,7 @@ This folder contains the helper scripts that make the Terraform Cloud User Contr
 Think of it like this:
 
 - Terraform manages users, teams, projects, and RBAC.
-- These scripts keep everything repeatable, observable, and fun.  
+- These scripts keep everything repeatable, observable, and fun.
 - `tfc_uc.sh` is your main driver. The rest are focused tools.
 
 ---
@@ -37,13 +37,13 @@ scenarios/
   terraform.auto.tfvars.s4
   terraform.auto.tfvars.s5
   terraform.auto.tfvars.s6
-````
+```
 
 Each scenario file encodes one of the six supported controller modes.
 
 ---
 
-## 2. `tfc_uc.sh`  Terraform Cloud User Controller wrapper
+## 2. `tfc_uc.sh` Terraform Cloud User Controller wrapper
 
 **File:** `scripts/tfc_uc.sh`
 **Role:** Main entry point to drive the controller.
@@ -57,19 +57,17 @@ Each scenario file encodes one of the six supported controller modes.
    ```
 
 2. Optionally pulls users from Terraform Cloud and regenerates `locked_users.auto.tfvars` using:
-
-   * `scripts/pull_credentials_from_tfc.sh`
-   * `scripts/generate_tfvars_from_json.sh`
+   - `scripts/pull_credentials_from_tfc.sh`
+   - `scripts/generate_tfvars_from_json.sh`
 
 3. Runs in one of four modes:
-
-   * `scenario`
+   - `scenario`
      Only switch scenario and optionally refresh locks. No Terraform, no git.
-   * `local`
+   - `local`
      Run `terraform init` and `terraform plan` or `terraform apply` locally.
-   * `git`
+   - `git`
      Commit changes so the Terraform Cloud git workspace picks up the new scenario.
-   * `actual`
+   - `actual`
      Inspect `terraform.auto.tfvars` and print the currently active scenario.
 
 ### 2.2 Scenarios
@@ -118,8 +116,8 @@ Each scenario file starts with a header line like:
 
 This uses:
 
-* `commit_gh` from your `$PATH` if available, or
-* falls back to `./scripts/commit_gh.sh` if that exists and is executable.
+- `commit_gh` from your `$PATH` if available, or
+- falls back to `./scripts/commit_gh.sh` if that exists and is executable.
 
 Terraform Cloud then runs the plan in the git based workspace.
 
@@ -196,20 +194,17 @@ You can also run it directly:
 
 ### 4.1 Supported inputs
 
-* `bootstrap.json` that contains:
+- `bootstrap.json` that contains:
 
   ```json
   {
-    "emails": [
-      "alice@example.com",
-      "bob@example.com"
-    ]
+    "emails": ["alice@example.com", "bob@example.com"]
   }
   ```
 
   In this mode the script can drive a bootstrap apply and then convert the generated credentials.
 
-* `credentials.auto.tfvars.json` or any JSON that contains a `users` map:
+- `credentials.auto.tfvars.json` or any JSON that contains a `users` map:
 
   ```json
   {
@@ -268,9 +263,9 @@ Optionally clean up the source JSON after conversion:
 
 Typical behavior:
 
-* Runs a Docker container with the Terraform Agent image.
-* Configures it with your TFC organization and agent token.
-* Prints the agent name and connection status.
+- Runs a Docker container with the Terraform Agent image.
+- Configures it with your TFC organization and agent token.
+- Prints the agent name and connection status.
 
 Example:
 
@@ -316,10 +311,10 @@ This is useful to show where live TFC diverges from the last applied state.
 
 Conceptually:
 
-* Run a refresh only plan.
-* Capture which resources are out of sync.
-* Write structured results to `scripts/output`.
-* Help you decide if you want to reconcile or leave them as is.
+- Run a refresh only plan.
+- Capture which resources are out of sync.
+- Write structured results to `scripts/output`.
+- Help you decide if you want to reconcile or leave them as is.
 
 Usage:
 
@@ -378,7 +373,7 @@ When in doubt, or live on stage:
 ./scripts/tfc_uc.sh --mode actual
 ```
 
-You see which scenario is active and which scenario file it maps to. 
+You see which scenario is active and which scenario file it maps to.
 Terraform and git stay untouched.
 The rubber 🦆 stays safe.
 
