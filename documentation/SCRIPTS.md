@@ -372,7 +372,7 @@ When in doubt, or live on stage:
 ```bash
 ./scripts/tfc_uc.sh --mode actual
 ```
-
+When in doubt, or live on stage:
 You see which scenario is active and which scenario file it maps to.
 Terraform and git stay untouched.
 The rubber 🦆 stays safe.
