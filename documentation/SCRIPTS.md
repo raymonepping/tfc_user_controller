@@ -13,7 +13,7 @@ Think of it like this:
 
 ## 1. Script Index
 
-```bash
+```
 | Script                                | Location             | Purpose                                                |
 | ------------------------------------- | -------------------- | ------------------------------------------------------ |
 | `tfc_uc.sh`                           | `scripts/`           | Scenario selector and controller wrapper               |
