@@ -4,12 +4,12 @@ variable "tfe_organization" {
 }
 
 variable "assignment_mode" {
-  description = "Per-user: personal team+project per user. Shared: one team+project for all."
+  description = "Per user: personal team+project per user. Shared: one team+project for all."
   type        = string
-  default     = "per_user"
+  default     = ""
   validation {
-    condition     = contains(["per_user", "shared"], var.assignment_mode)
-    error_message = "assignment_mode must be either \"per_user\" or \"shared\"."
+    condition     = var.assignment_mode == "" || contains(["per_user", "shared"], var.assignment_mode)
+    error_message = "assignment_mode must be empty or one of \"per_user\" or \"shared\"."
   }
 }
 
@@ -47,7 +47,7 @@ variable "personal_team_prefix" {
 }
 
 variable "enable_common_access" {
-  description = "Grant the common team access to each per-user project."
+  description = "Grant the common team access to each per user project."
   type        = bool
   default     = true
 }
@@ -102,13 +102,61 @@ variable "organization_access" {
   })
 }
 
+variable "shared_project_mode" {
+  type        = string
+  description = "How to handle the shared project: create or existing"
+  default     = ""
+  validation {
+    condition     = var.shared_project_mode == "" || contains(["create", "existing"], var.shared_project_mode)
+    error_message = "shared_project_mode must be empty, \"create\" or \"existing\"."
+  }
+}
+
+# Backwards compatible alias for older tfvars using shared_mode
 variable "shared_mode" {
   type        = string
-  description = "How to handle the shared team/project: create or existing"
-  default     = "create"
+  description = "Legacy alias for shared_project_mode"
+  default     = ""
 
   validation {
-    condition     = contains(["create", "existing"], var.shared_mode)
-    error_message = "shared_mode must be either \"create\" or \"existing\"."
+    condition     = var.shared_mode == "" || contains(["create", "existing"], var.shared_mode)
+    error_message = "shared_mode must be empty or one of \"create\", \"existing\"."
   }
+}
+
+locals {
+  # If shared_mode is provided, it overrides shared_project_mode
+  effective_shared_project_mode = var.shared_mode != "" ? var.shared_mode : var.shared_project_mode
+}
+
+variable "shared_team_mode" {
+  type        = string
+  description = "How to handle the shared team: create or existing"
+  default     = ""
+  validation {
+    condition     = var.shared_team_mode == "" || contains(["create", "existing"], var.shared_team_mode)
+    error_message = "shared_team_mode must be empty, \"create\" or \"existing\"."
+  }
+}
+
+variable "email_source" {
+  type        = string
+  description = "Where to load emails from: bootstrap.json, variable list, or locked users"
+  default     = ""
+  validation {
+    condition     = var.email_source == "" || contains(["bootstrap", "variable", "locked"], var.email_source)
+    error_message = "email_source must be empty, \"bootstrap\", \"variable\", or \"locked\"."
+  }
+}
+
+variable "emails" {
+  type        = list(string)
+  description = "List of user email addresses to bootstrap (used when email_source = variable)"
+  default     = []
+}
+
+variable "rbac_dry_run" {
+  type        = bool
+  description = "If true, compute topology but do not create any RBAC bindings in TFE"
+  default     = false
 }

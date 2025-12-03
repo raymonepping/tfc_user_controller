@@ -4,17 +4,17 @@
 
 output "usernames" {
   description = "Derived usernames per email"
-  value       = local.usernames
+  value       = module.users.usernames
 }
 
 output "project_names" {
-  description = "Per-user projects created"
-  value       = { for e, p in tfe_project.user_project : e => p.name }
+  description = "Per user projects created"
+  value       = module.projects.user_project_names
 }
 
 output "contributors_team_id" {
-  description = "Contributors/common team id (null if disabled)"
-  value       = local.common_team_id
+  description = "Contributors or common team id (null if disabled)"
+  value       = module.teams.common_team_id
 }
 
 output "granted_access_level" {
@@ -22,34 +22,50 @@ output "granted_access_level" {
   value       = "maintain"
 }
 
-########################################
-# New — credentials output for TFC pull
-########################################
-# This mirrors the old credentials.auto.tfvars.json file,
-# but works across Terraform Cloud runners.
-########################################
-
 output "credentials_json" {
-  description = "Resolved workshop user metadata for locked mode (email → username, membership_id, user_id)"
+  description = "Resolved workshop user metadata (email → username, membership_id, user_id)"
   value = {
-    users = local.users_to_persist
+    users = module.users.users_to_persist
   }
 }
 
 ########################################
-# Optional — assignment mode visibility
+# Optional – assignment mode visibility
 ########################################
 
 output "assignment_mode_effective" {
-  description = "Whether per-user mode or shared mode was used"
+  description = "Whether per user mode or shared mode was used"
   value       = var.assignment_mode
 }
 
 ########################################
-# Optional — list of effective emails
+# Optional – list of effective emails
 ########################################
 
 output "effective_emails" {
   description = "Emails Terraform actually processed in this run"
-  value       = local.effective_emails
+  value       = module.users.effective_emails
+}
+
+output "topology" {
+  description = "Full mapping of emails, memberships, teams, and projects"
+  value = {
+    assignment_mode      = local.effective_assignment_mode
+    email_source         = local.effective_email_source
+    rbac_dry_run         = var.rbac_dry_run
+    shared = {
+      project_id  = module.projects.shared_project_id
+      team_id     = module.teams.shared_team_id
+      common_team = module.teams.common_team_id
+    }
+    users = {
+      for email in module.users.effective_emails : email => {
+        username      = module.users.usernames[email]
+        membership_id = module.users.membership_ids[email]
+        user_id       = module.users.user_ids[email]
+        personal_team = module.teams.personal_team_ids[email]
+        personal_proj = module.projects.user_project_ids[email]
+      }
+    }
+  }
 }
