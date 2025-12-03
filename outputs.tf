@@ -9,7 +9,7 @@ output "usernames" {
 
 output "project_names" {
   description = "Per user projects created (only in per_user mode)"
-  value = local.effective_assignment_mode == "per_user" ? module.projects.user_project_names : {}
+  value       = local.effective_assignment_mode == "per_user" ? module.projects.user_project_names : {}
 }
 
 output "contributors_team_id" {
