@@ -1,7 +1,7 @@
 users = {
   "raymon.epping@ibm.com" = {
     username      = "raymon_epping"
-    membership_id = "ou-7YNmW4oBm5Kgbr9o"
+    membership_id = "ou-NLSkoR3jhHZBTKvv"
     user_id       = ""
   }
 }
