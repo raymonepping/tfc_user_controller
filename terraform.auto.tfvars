@@ -1,25 +1,37 @@
 ##############################################################################
-# Scenario 3: New shared project + new shared team
+# Scenario 4: Per user sandboxes (per user project + team)
 #
-# Terraform will:
-#   - create shared project: "Workshop_Default"
-#   - create shared team:    "Workshop_Default_Team"
-#   - add all emails to that team
-#   - give the team "maintain" on the project
+# For each email:
+#   - project: "workshop_project_<username>"
+#   - team:    "workshop_team_<username>"
+#   - team has maintain on that project
+# Optional:
+#   - common team "Contributors" gets access to all projects
 ##############################################################################
 
 # High level scenario
-profile = "shared_new_project_new_team"
+profile         = "per_user"
+assignment_mode = "per_user"
 
-# New shared project and team to create
-shared_project_name = "Amazing_Project"
-shared_team_name    = "Terrible_Team"
+# Per user naming prefixes
+projects_prefix      = "perfect_project"
+personal_team_prefix = "perfect_team"
 
-# Emails from bootstrap.json
+# Email source from bootstrap.json
+# Example bootstrap.json:
+# {
+#   "emails": [
+#     "raymon.epping@ibm.com",
+#     "alice@example.com",
+#     "bob@example.com"
+#   ]
+# }
 email_source = "bootstrap"
 
-# For now, no extra common team
-enable_common_access = false
+# Give a common team access to all user projects (optional)
+# This expects an existing team named "Contributors" in the org
+enable_common_access = true
+common_team_name     = "Contributors"
 
-# Apply RBAC bindings
+# Apply RBAC wiring (teams <> projects)
 rbac_dry_run = false
