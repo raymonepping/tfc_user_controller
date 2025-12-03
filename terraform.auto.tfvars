@@ -1,5 +1,5 @@
 ##############################################################################
-# Scenario 2: Existing project + new shared team
+# Scenario 2: Existing project + new shared team ...
 #
 # Users from var.emails are added to:
 #   - existing project: "Default Project"
