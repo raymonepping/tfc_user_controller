@@ -4,11 +4,11 @@ set -euo pipefail
 SCRIPT_NAME="$(basename "$0")"
 
 SCENARIO=""
-LOAD_USERS="none"      # valid: none, tfc
-AUTO_APPLY="false"     # valid: true, false (only relevant for mode=local)
+LOAD_USERS="none"       # valid: none, tfc
+AUTO_APPLY="false"      # valid: true, false (only relevant for mode=local)
 OUT_DIR="./scripts/output"
-MODE="scenario"        # valid: scenario, local, git, actual
-SHOW_TOPOLOGY="false"   # valid: true, false (local mode only)
+MODE="scenario"         # valid: scenario, local, git, actual
+SHOW_TOPOLOGY="false"   # valid: true, false
 
 # Simple ANSI colors
 BOLD=$'\e[1m'
@@ -57,9 +57,11 @@ ${BOLD}Options:${RESET}
                               git      update files and run commit_gh or scripts/commit_gh.sh
                               actual   inspect and print current active scenario from terraform.auto.tfvars
 
-      ${CYAN}--show-topology <bool>${RESET} (mode=local or shortcut)
-                            If true in mode=local, run "terraform output -json topology | jq ."
-                            If passed without --scenario, only print topology and exit
+      ${CYAN}--show-topology <bool>${RESET}
+                            If true:
+                              mode=local  -> show "terraform output -json topology | jq ."
+                              mode=actual -> same, after showing active scenario
+                              no scenario -> topology shortcut, no file changes
 
   ${CYAN}-h, --help${RESET}                Show this help and exit
 
@@ -78,6 +80,12 @@ ${BOLD}Examples:${RESET}
 
   ${DIM}# RBAC validation only with topology dump${RESET}
   ./scripts/${SCRIPT_NAME} -s 6 --mode local --show-topology true
+
+  ${DIM}# Inspect active scenario and current topology${RESET}
+  ./scripts/${SCRIPT_NAME} --mode actual --show-topology true
+
+  ${DIM}# Topology shortcut, no scenario changes${RESET}
+  ./scripts/${SCRIPT_NAME} --show-topology true
 
 EOF
 }
@@ -124,7 +132,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Basic mode validation (independent from scenario)
+# Basic mode validation
 if [[ "${MODE}" != "scenario" && "${MODE}" != "local" && "${MODE}" != "git" && "${MODE}" != "actual" ]]; then
   error "Invalid --mode value: ${MODE}. Use 'scenario', 'local', 'git', or 'actual'."
 fi
@@ -137,45 +145,45 @@ if [[ "${AUTO_APPLY}" != "true" && "${AUTO_APPLY}" != "false" ]]; then
   error "Invalid --auto-apply value: ${AUTO_APPLY}. Use 'true' or 'false'."
 fi
 
+if [[ "${SHOW_TOPOLOGY}" != "true" && "${SHOW_TOPOLOGY}" != "false" ]]; then
+  error "Invalid --show-topology value: ${SHOW_TOPOLOGY}. Use 'true' or 'false'."
+fi
+
 # Ensure we are in repo root
 if [[ ! -f "main.tf" ]]; then
   error "This script must be run from the repository root (main.tf must exist)."
 fi
 
-if [[ "${SHOW_TOPOLOGY}" != "true" && "${SHOW_TOPOLOGY}" != "false" ]]; then
-  error "Invalid --show-topology value: ${SHOW_TOPOLOGY}. Use 'true' or 'false'."
-fi
-
-if [[ "${SHOW_TOPOLOGY}" == "true" && "${MODE}" == "scenario" && -z "${SCENARIO}" ]]; then
+########################################
+# Topology-only shortcut
+########################################
+if [[ -z "${SCENARIO}" && "${MODE}" != "actual" && "${SHOW_TOPOLOGY}" == "true" ]]; then
   echo "🔍 Topology-only shortcut"
   echo "   No scenario selected."
   echo "   No files will be changed."
   echo "   No terraform plan or apply will be run."
   echo
-
+  echo "🧩 Running: terraform output -json topology | jq ."
   if command -v jq >/dev/null 2>&1; then
-    echo "🧩 Running: terraform output -json topology | jq ."
     terraform output -json topology | jq .
   else
-    echo "ℹ️ jq not found, falling back to:"
-    echo "   terraform output topology"
+    echo "ℹ️ jq not found, falling back to raw output:"
     terraform output topology
   fi
-
   echo
   echo "✅ Done. Topology inspected, nothing else touched."
   exit 0
 fi
 
 ########################################
-# MODE = actual: only inspect current scenario
+# MODE = actual: only inspect current scenario (+ optional topology)
 ########################################
 if [[ "${MODE}" == "actual" ]]; then
   if [[ ! -f "terraform.auto.tfvars" ]]; then
     error "No terraform.auto.tfvars found. Cannot detect active scenario."
   fi
 
-  # We expect something like on line 2:
+  # Expect something like on line 2:
   # # Scenario 3: New shared project + new shared team
   HEADER_LINE="$(sed -n '2p' terraform.auto.tfvars || true)"
 
@@ -183,6 +191,18 @@ if [[ "${MODE}" == "actual" ]]; then
     echo "ℹ️  Could not read line 2 from terraform.auto.tfvars."
     echo "    Raw file preview:"
     head -n 5 terraform.auto.tfvars || true
+
+    if [[ "${SHOW_TOPOLOGY}" == "true" ]]; then
+      echo
+      echo "🧩 Showing topology output (terraform output -json topology | jq .)..."
+      if command -v jq >/dev/null 2>&1; then
+        terraform output -json topology | jq .
+      else
+        echo "ℹ️ jq not found, falling back to raw output:"
+        terraform output topology
+      fi
+    fi
+
     exit 0
   fi
 
@@ -198,13 +218,25 @@ if [[ "${MODE}" == "actual" ]]; then
     echo "ℹ️  Could not parse a Scenario header from terraform.auto.tfvars."
     echo "    Header line was:"
     echo "    ${HEADER_LINE}"
+
+    if [[ "${SHOW_TOPOLOGY}" == "true" ]]; then
+      echo
+      echo "🧩 Showing topology output (terraform output -json topology | jq .)..."
+      if command -v jq >/dev/null 2>&1; then
+        terraform output -json topology | jq .
+      else
+        echo "ℹ️ jq not found, falling back to raw output:"
+        terraform output topology
+      fi
+    fi
+
     exit 0
   fi
 
   # Trim leading space from description if any
   CURRENT_SCENARIO_DESC_RAW="${CURRENT_SCENARIO_DESC_RAW# }"
 
-  # Optional mapping for our friendly descriptor
+  # Friendly descriptor
   CURRENT_SCENARIO_DESC=""
   case "${CURRENT_SCENARIO_NUM}" in
     1) CURRENT_SCENARIO_DESC="shared: existing project + existing team" ;;
@@ -232,13 +264,24 @@ if [[ "${MODE}" == "actual" ]]; then
   echo "   No terraform commands were run."
   echo "   No git commits were made."
   echo
+
+  if [[ "${SHOW_TOPOLOGY}" == "true" ]]; then
+    echo "🧩 Showing topology output (terraform output -json topology | jq .)..."
+    if command -v jq >/dev/null 2>&1; then
+      terraform output -json topology | jq .
+    else
+      echo "ℹ️ jq not found, falling back to raw output:"
+      terraform output topology
+    fi
+    echo
+  fi
+
   echo "   Not a single rubber duck was sacrificed for debugging. 🦆"
-  exit 0  
   exit 0
 fi
 
 ########################################
-# For all other modes, scenario is required
+# For scenario/local/git modes, scenario is required
 ########################################
 if [[ -z "${SCENARIO}" ]]; then
   error "No scenario specified. Use --scenario <1-6> (not required for --mode actual)."
@@ -258,7 +301,7 @@ if [[ ! -f "${SCENARIO_FILE}" ]]; then
   error "Scenario file not found: ${SCENARIO_FILE}"
 fi
 
-# Scenario descriptions for human friendly output
+# Scenario descriptions
 SCENARIO_DESC=""
 case "${SCENARIO}" in
   1) SCENARIO_DESC="shared: existing project + existing team" ;;
@@ -315,7 +358,6 @@ if [[ "${MODE}" == "git" ]]; then
   echo "📤 Git mode selected. Skipping local terraform init/plan/apply."
   echo "   Committing changes so TFC can pick up the new scenario."
 
-  # Prefer commit_gh in PATH, then fallback to scripts/commit_gh.sh
   if command -v commit_gh >/dev/null 2>&1; then
     echo "📝 Using commit_gh from PATH: $(command -v commit_gh)"
     commit_gh
