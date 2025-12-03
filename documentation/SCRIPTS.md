@@ -1,4 +1,3 @@
-````markdown
 # 🧩 Terraform Cloud User Controller Scripts
 
 This folder contains the helper scripts that make the Terraform Cloud User Controller practical for workshops, demos, and real environments.
@@ -13,7 +12,8 @@ Think of it like this:
 
 ## 1. Script Index
 
-```
+```bash
+
 | Script                                | Location             | Purpose                                                |
 | ------------------------------------- | -------------------- | ------------------------------------------------------ |
 | `tfc_uc.sh`                           | `scripts/`           | Scenario selector and controller wrapper               |
@@ -24,6 +24,7 @@ Think of it like this:
 | `tfc_diff_live_object.sh`             | `scripts/`           | Compare config vs live TFC using refresh-only plan     |
 | `tfc_drift.sh`                        | `scripts/`           | Run a full drift triage workflow                       |
 | `tfc_rights_extract.sh`               | `scripts/`           | Extract organization access rights for a team or user  |
+
 ```
 
 Scenarios live in:
