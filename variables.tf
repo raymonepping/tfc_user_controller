@@ -102,18 +102,16 @@ variable "shared_project_mode" {
 }
 
 # Backwards compatible alias for older tfvars using shared_mode
-variable "shared_mode" {
-  type        = string
-  description = "Legacy alias for shared_project_mode"
-  default     = ""
+#variable "shared_mode" {
+# type        = string
+# description = "Legacy alias for shared_project_mode"
+#  default     = ""
 
-  validation {
-    condition     = var.shared_mode == "" || contains(["create", "existing"], var.shared_mode)
-    error_message = "shared_mode must be empty or one of \"create\", \"existing\"."
-  }
-}
-
-
+#validation {
+#   condition     = var.shared_mode == "" || contains(["create", "existing"], var.shared_mode)
+#   error_message = "shared_mode must be empty or one of \"create\", \"existing\"."
+# }
+#}
 
 variable "shared_team_mode" {
   type        = string

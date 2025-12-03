@@ -16,15 +16,15 @@ data "tfe_organization" "this" {
 
 # Current workspace (where this code runs). Useful if you ever want to
 # auto-attach RBAC back to this workspace or introspect it.
-data "tfe_workspace" "controller" {
-  name         = "tfc_user_controller"
-  organization = data.tfe_organization.this.name
-}
+# data "tfe_workspace" "controller" {
+#   name         = "tfc_user_controller"
+#  organization = data.tfe_organization.this.name
+#}
 
 locals {
   org_name = data.tfe_organization.this.name
-  org_id   = data.tfe_organization.this.id
+  # org_id   = data.tfe_organization.this.id
 
-  controller_workspace_name = data.tfe_workspace.controller.name
-  controller_workspace_id   = data.tfe_workspace.controller.id
+  # controller_workspace_name = data.tfe_workspace.controller.name
+  # controller_workspace_id   = data.tfe_workspace.controller.id
 }
