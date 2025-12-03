@@ -11,7 +11,7 @@ profile = "shared_existing_project_existing_team"
 
 # Existing TFC project and team
 shared_project_name = "Default Project"
-shared_team_name    = "Contributors"
+shared_team_name    = "terrible_team"
 
 # Email source comes from bootstrap.json
 email_source = "bootstrap"
