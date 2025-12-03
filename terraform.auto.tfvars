@@ -28,7 +28,7 @@ personal_team_prefix = "perfect_team"
 # }
 
 # Email source based on the locked users map
-email_source = "locked"
+email_source = "bootstrap"
 using_locked = true
 
 # Give a common team access to all user projects (optional)
