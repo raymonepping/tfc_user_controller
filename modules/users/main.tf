@@ -60,9 +60,9 @@ resource "tfe_organization_membership" "org_membership" {
   }
 }
 
-########################################
+#############################################
 # Resolved IDs for locked and bootstrap modes
-########################################
+#############################################
 
 locals {
   membership_ids = (
