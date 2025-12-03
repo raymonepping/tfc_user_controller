@@ -43,13 +43,14 @@ resource "tfe_team" "personal" {
 }
 
 ########################################
-# Shared team
+# Shared team (create vs existing)
 ########################################
 
 locals {
   shared_using_existing = var.shared_team_mode == "existing"
 }
 
+# Shared team (create mode)
 resource "tfe_team" "shared" {
   count        = var.assignment_per_user || local.shared_using_existing ? 0 : 1
   organization = var.tfe_organization
@@ -74,15 +75,16 @@ resource "tfe_team" "shared" {
   }
 }
 
-########################################
 # Shared team (existing mode)
-########################################
-
 data "tfe_team" "shared" {
   count        = var.assignment_per_user || !local.shared_using_existing ? 0 : 1
   name         = var.shared_team_name
   organization = var.tfe_organization
 }
+
+########################################
+# Derived IDs
+########################################
 
 locals {
   personal_team_ids = {
@@ -90,5 +92,17 @@ locals {
     email => try(tfe_team.personal[email].id, null)
   }
 
-  shared_team_id = var.assignment_per_user ? null : tfe_team.shared[0].id
+  # In per-user mode there is no shared team.
+  # In shared mode:
+  #   - if shared_team_mode = "existing", use data.tfe_team.shared
+  #   - if shared_team_mode = "create",   use resource tfe_team.shared
+  shared_team_id = var.assignment_per_user ? null : (
+    local.shared_using_existing
+    ? data.tfe_team.shared[0].id
+    : (
+        length(tfe_team.shared) > 0
+        ? tfe_team.shared[0].id
+        : null
+      )
+  )
 }
