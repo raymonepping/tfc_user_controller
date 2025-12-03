@@ -1,8 +1,29 @@
 
 
-## 📁 Folder Tree - 2025-12-03 12:41:26 ##
+## 📁 Folder Tree - 2025-12-03 14:57:55 ##
 
 ./
+├── documentation/
+│   ├── LOADING_USERS.md
+│   └── SCRIPTS.md
+├── modules/
+│   ├── projects/
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── rbac/
+│   │   ├── .terraform.lock.hcl
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── teams/
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   └── users/
+│     ├── main.tf
+│     ├── outputs.tf
+│     └── variables.tf
 ├── scenarios/
 │   ├── terraform.auto.tfvars.s1
 │   ├── terraform.auto.tfvars.s2
@@ -16,15 +37,26 @@
 │   │   ├── drift_tfe_team_personal__raymon_epping_ibm_com__.json
 │   │   ├── live_diff_tfe_team_personal__raymon_epping_ibm_com__.json
 │   │   └── rights_raymon_epping_ibm_com.json
+│   ├── commit_gh.sh*
 │   ├── generate_tfvars_from_json.sh*
-│   └── pull_credentials_from_tfc.sh*
+│   ├── pull_credentials_from_tfc.sh*
+│   ├── start_terraform_agent.sh*
+│   ├── tfc_diff_live_object.sh*
+│   ├── tfc_diff_object.sh*
+│   ├── tfc_drift.sh*
+│   ├── tfc_rights_extract.sh*
+│   └── tfc_uc.sh*
+├── .terraform.lock.hcl
 ├── assignment_mode.auto.tfvars
 ├── backend.tf
 ├── bootstrap.json
 ├── data.tf
+├── FOLDER_TREE.md
 ├── LICENSE
 ├── locked_users.auto.tfvars
+├── main.bak
 ├── main.tf
+├── outputs.bak
 ├── outputs.tf
 ├── profiles.tf
 ├── rbac.auto.tfvars.json
@@ -32,3 +64,5 @@
 ├── terraform.auto.tfvars
 ├── variables.tf
 └── versions.tf
+
+10 directories, 52 files

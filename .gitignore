@@ -11,6 +11,7 @@ Thumbs.db
 *.pid
 v*.tar.gz
 readme_*.tpl
+*.bak
 
 ########################################
 # 💻 IDE & Editor Configs
