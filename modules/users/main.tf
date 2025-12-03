@@ -46,17 +46,15 @@ locals {
 }
 
 resource "tfe_organization_membership" "org_membership" {
-  # When locked, we do not manage memberships at all
-  for_each     = local.effective_using_locked ? {} : local.org_membership_map
+  # Always keep memberships declared. Locked mode is handled
+  # by where we read IDs from, not by removing the resource.
+  for_each     = local.org_membership_map
   organization = var.tfe_organization
   email        = each.key
 
   lifecycle {
     ignore_changes  = [email]
-    # Always protect memberships from destroy.
-    # To intentionally remove users, you would temporarily change this to false
-    # or handle cleanup in a dedicated workflow.
-    prevent_destroy = false
+    prevent_destroy = true
   }
 }
 
@@ -94,7 +92,6 @@ locals {
 
 resource "local_file" "persist_credentials" {
   count    = var.using_locked || !var.write_credentials_file ? 0 : 1
-  # Keep file in the repo root like before
   filename = "${path.cwd}/credentials.auto.tfvars.json"
   content = jsonencode({
     users = local.users_to_persist
