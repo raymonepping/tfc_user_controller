@@ -54,7 +54,7 @@ resource "tfe_organization_membership" "org_membership" {
 
   lifecycle {
     ignore_changes  = [email]
-    prevent_destroy = true
+    prevent_destroy = false
   }
 }
 
