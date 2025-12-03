@@ -155,8 +155,20 @@ if [[ ! -f "${SCENARIO_FILE}" ]]; then
   error "Scenario file not found: ${SCENARIO_FILE}"
 fi
 
+# Scenario descriptions for human friendly output
+SCENARIO_DESC=""
+case "${SCENARIO}" in
+  1) SCENARIO_DESC="shared: existing project + existing team" ;;
+  2) SCENARIO_DESC="shared: existing project + new shared team" ;;
+  3) SCENARIO_DESC="shared: new shared project + new shared team" ;;
+  4) SCENARIO_DESC="per user sandboxes: project + team per user" ;;
+  5) SCENARIO_DESC="per user sandboxes: locked users" ;;
+  6) SCENARIO_DESC="RBAC validation: topology only (dry run wiring)" ;;
+esac
+
 echo "🔧 Terraform Cloud User Controller wrapper"
 echo "   Scenario        : ${SCENARIO}"
+echo "   Scenario desc   : ${SCENARIO_DESC} 🍰🍒"
 echo "   Scenario file   : ${SCENARIO_FILE}"
 echo "   Load users mode : ${LOAD_USERS}"
 echo "   Execution mode  : ${MODE}"
@@ -189,6 +201,7 @@ if [[ "${MODE}" == "scenario" ]]; then
   echo "   locked_users.auto.tfvars refreshed: ${LOAD_USERS}"
   echo "   No terraform commands were run."
   echo "   No git commits were made."
+  echo "   Consider this the icing on the cake, cherry optional 🍰🍒"
   echo
   echo "✅ Done."
   exit 0

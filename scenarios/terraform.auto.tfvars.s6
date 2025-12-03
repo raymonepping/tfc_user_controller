@@ -1,5 +1,5 @@
 ##############################################################################
-# Scenario 5: Per user sandboxes, locked mode
+# Scenario 6: RBAC validation
 #
 # - Reuse users and IDs from locked_users.auto.tfvars
 # - Do not create or destroy organization memberships
