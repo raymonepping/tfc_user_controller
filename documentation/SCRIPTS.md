@@ -378,12 +378,12 @@ When in doubt, or live on stage:
 ./scripts/tfc_uc.sh --mode actual
 ```
 
-You see which scenario is active and which scenario file it maps to. Terraform and git stay untouched. The rubber duck stays safe.
+You see which scenario is active and which scenario file it maps to. 
+Terraform and git stay untouched.
+The rubber 🦆 stays safe.
 
 ---
 
 That is it. The controller logic lives in the Terraform modules.
-These scripts are the icing on the cake and the cherry on top that make it enjoyable to drive in front of a room. 🍰🍒
-
-```
-```
+These scripts are the 🍒 on the 🍰.
+that make it enjoyable to drive in front of a room.
